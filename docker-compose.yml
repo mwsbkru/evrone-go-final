@@ -1,0 +1,54 @@
+version: '3.8'
+
+services:
+  # Сервис для Go приложения
+  go-app:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+    depends_on:
+      - kafka
+      - zookeeper
+    restart: on-failure
+
+  # Сервис Zookeeper
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.2.1
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+  # Сервис Kafka
+  kafka:
+    image: confluentinc/cp-kafka:7.2.1
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    restart: on-failure
+
+  # Сервис для управления темами Kafka
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 8000:8080
+    environment:
+      DYNAMIC_CONFIG_ENABLED: true
+
+volumes:
+  kafka-data:
+  zookeeper-data:
