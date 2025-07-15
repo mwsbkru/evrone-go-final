@@ -10,6 +10,9 @@ services:
       - "8080:8080"
     environment:
       - KAFKA_BROKERS=kafka:9092
+      - KAFKA_TOPIC_EMAIL_NOTIFICATIONS=notifications_email
+      - KAFKA_TOPIC_PUSH_NOTIFICATIONS=notifications_push
+      - KAFKA_TOPIC_WS_NOTIFICATIONS=notifications_ws
     depends_on:
       - kafka
       - zookeeper
