@@ -13,10 +13,27 @@ services:
       - KAFKA_TOPIC_EMAIL_NOTIFICATIONS=notifications_email
       - KAFKA_TOPIC_PUSH_NOTIFICATIONS=notifications_push
       - KAFKA_TOPIC_WS_NOTIFICATIONS=notifications_ws
+      - SMTP_SERVER_HOST=mailhog
+      - SMTP_SERVER_PORT=1025
     depends_on:
       - kafka
       - zookeeper
-    restart: on-failure
+    restart: always
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    restart: always
+    environment:
+      MH_AUTH_FILE: /mailhog.auth
+      MH_MAILDIR_PATH: /data
+      MH_STORAGE: maildir
+    volumes:
+      - ./mailhog.auth:/mailhog.auth:ro
+      - ./data:/data:rw
+    ports:
+      - "1025:1025" #127.0.0.1:1025:1025
+      - "8025:8025"
 
   # Сервис Zookeeper
   zookeeper:

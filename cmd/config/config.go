@@ -20,6 +20,12 @@ type Config struct {
 	RedisDB                      int    `env:"REDIS_DB"`
 	RedisMaxRetries              int    `env:"HOST" env-default:"5"`
 	RedisTimeoutSeconds          int    `env:"HOST" env-default:"5"`
+	SmtpServerHost               string `env:"SMTP_SERVER_HOST"`
+	SmtpServerPort               int    `env:"SMTP_SERVER_PORT"`
+	SmtpTimeoutSeconds           int    `env:"SMTP_TIMEOUT_SECONDS" env-default:"10"`
+	SmtpUsername                 string `env:"SMTP_USERNAME" env-default:""`
+	SmtpPassword                 string `env:"SMTP_PASSWORD" env-default:""`
+	FromEmail                    string `env:"FROM_EMAIL" env-default:"email@notificator.ru"`
 }
 
 // NewConfig returns initialized config

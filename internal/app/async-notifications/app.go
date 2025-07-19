@@ -34,9 +34,9 @@ func Run(ctx context.Context, cfg *config.Config) {
 	topicEmailNotifications := cfg.KafkaTopicEmailNotifications
 	kafkaObserverEmail := notifications_observer.NewKafkaNotificationsObserver(topicEmailNotifications, cfg, consumerEmail)
 
-	consoleProcessorEmail := notifications_processor.ConsoleNotificationsProcessor{Name: "email"}
+	consoleProcessorEmail := notifications_processor.NewEmailNotificationsProcessor(cfg)
 	deadProcessorEmail := dead_notifications_processor.ConsoleDeadNotificationsProcessor{Name: "email"}
-	notificationsChannelEmail := usecase.NewNotificationChannelUseCase("Email processor", kafkaObserverEmail, &consoleProcessorEmail, &deadProcessorEmail)
+	notificationsChannelEmail := usecase.NewNotificationChannelUseCase("Email processor", kafkaObserverEmail, consoleProcessorEmail, &deadProcessorEmail)
 
 	topicPushNotifications := cfg.KafkaTopicPushNotifications
 	kafkaObserverPush := notifications_observer.NewKafkaNotificationsObserver(topicPushNotifications, cfg, consumerPush)

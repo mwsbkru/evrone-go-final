@@ -2,6 +2,7 @@ package notifications_observer
 
 import (
 	"context"
+	"encoding/json"
 	"evrone_course_final/cmd/config"
 	"evrone_course_final/internal/entity"
 	"evrone_course_final/internal/usecase"
@@ -52,15 +53,31 @@ func (k *KafkaNotificationsObserver) ConsumeClaim(session sarama.ConsumerGroupSe
 	// Обработка сообщений
 	for message := range claim.Messages() {
 		slog.Info("Kafka observer - message received", slog.String("message.key", string(message.Key)), slog.String("message.value", string(message.Value)))
-		go k.subscriber(messageToNotification(message))
-		session.MarkMessage(message, "")
+
+		go func() {
+			session.MarkMessage(message, "")
+			notification, err := messageToNotification(message)
+			if err != nil {
+				slog.Error("KafkaNotificationsProcessor: error unmarshall json", slog.String("error", err.Error()))
+				return
+			}
+
+			k.subscriber(*notification)
+		}()
 	}
 
 	return nil
 }
 
-func messageToNotification(message *sarama.ConsumerMessage) entity.Notification {
-	return entity.Notification{Body: string(message.Value)}
+func messageToNotification(message *sarama.ConsumerMessage) (*entity.Notification, error) {
+	var notification entity.Notification
+
+	err := json.Unmarshal([]byte(message.Value), &notification)
+	if err != nil {
+		return nil, fmt.Errorf("KafkaNotificationsProcessor error unmarshall json: %w", err)
+	}
+
+	return &notification, nil
 }
 
 func (k *KafkaNotificationsObserver) Setup(sarama.ConsumerGroupSession) error {
