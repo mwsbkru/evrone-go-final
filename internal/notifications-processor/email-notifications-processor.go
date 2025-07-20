@@ -18,7 +18,7 @@ func NewEmailNotificationsProcessor(cfg *config.Config) *EmailNotificationsProce
 	return &EmailNotificationsProcessor{cfg: cfg}
 }
 
-func (e *EmailNotificationsProcessor) Process(notification entity.Notification) error {
+func (e *EmailNotificationsProcessor) Process(notification *entity.Notification) error {
 	server := mail.NewSMTPClient()
 
 	server.Host = e.cfg.SmtpServerHost

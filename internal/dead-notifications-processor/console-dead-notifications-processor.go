@@ -2,19 +2,18 @@ package dead_notifications_processor
 
 import (
 	"evrone_course_final/internal/entity"
-	"fmt"
+	"log/slog"
 )
 
 type ConsoleDeadNotificationsProcessor struct {
 	Name string
 }
 
-func (c *ConsoleDeadNotificationsProcessor) Process(notification entity.Notification, err error) error {
-	// TODO: switch to slog
-	fmt.Println("-------console dead notifications processor-------------")
-	fmt.Println(c.Name)
-	fmt.Println(notification.Body)
-	fmt.Println(err)
-	fmt.Println("---------------------------------------------------")
+func (c *ConsoleDeadNotificationsProcessor) Process(notification *entity.Notification, err error) error {
+	slog.Info("-------console dead notifications processor-------------")
+	slog.Info(c.Name)
+	slog.Info(notification.Body)
+	slog.Info(err.Error())
+	slog.Info("---------------------------------------------------")
 	return nil
 }

@@ -62,7 +62,7 @@ func (k *KafkaNotificationsObserver) ConsumeClaim(session sarama.ConsumerGroupSe
 				return
 			}
 
-			k.subscriber(*notification)
+			k.subscriber(session.Context(), notification)
 		}()
 	}
 

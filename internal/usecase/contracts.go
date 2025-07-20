@@ -5,7 +5,7 @@ import (
 	"evrone_course_final/internal/entity"
 )
 
-type NotificationsSubscriber func(notification entity.Notification)
+type NotificationsSubscriber func(ctx context.Context, notification *entity.Notification)
 type Terminator func() // Когда завершили слушать источник нотификаций уведомляем об этом хозяина
 
 type NotificationsObserver interface {
@@ -14,9 +14,9 @@ type NotificationsObserver interface {
 }
 
 type NotificationsProcessor interface {
-	Process(notification entity.Notification) error
+	Process(notification *entity.Notification) error
 }
 
 type DeadNotificationsProcessor interface {
-	Process(notification entity.Notification, err error) error
+	Process(notification *entity.Notification, err error) error
 }
