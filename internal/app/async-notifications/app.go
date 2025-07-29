@@ -2,18 +2,18 @@ package async_notifications
 
 import (
 	"context"
-	"evrone_course_final/cmd/config"
+	"evrone_course_final/config"
 	dead_notifications_processor "evrone_course_final/internal/dead-notifications-processor"
 	notifications_observer "evrone_course_final/internal/notifications-observer"
 	notifications_processor "evrone_course_final/internal/notifications-processor"
+	"evrone_course_final/internal/tools"
 	"evrone_course_final/internal/usecase"
 	"github.com/IBM/sarama"
 	"log/slog"
-	"time"
 )
 
 func Run(ctx context.Context, cfg *config.Config) {
-	kafkaClient, err := prepareKafkaClient(cfg)
+	kafkaClient, err := tools.PrepareKafkaClient(cfg)
 	if err != nil {
 		slog.Error("Can`t init Kafka client", slog.String("error", err.Error()))
 		return
@@ -34,6 +34,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 	topicEmailNotifications := cfg.KafkaTopicEmailNotifications
 	kafkaObserverEmail := notifications_observer.NewKafkaNotificationsObserver(topicEmailNotifications, cfg, consumerEmail)
 
+	// TODO: Добавить в dead notifications processor отправкку в кафку
 	processorEmail := notifications_processor.NewEmailNotificationsProcessor(cfg)
 	deadProcessorEmail := dead_notifications_processor.ConsoleDeadNotificationsProcessor{Name: "email"}
 	notificationsChannelEmail := usecase.NewNotificationChannelUseCase(cfg, "Email processor", kafkaObserverEmail, processorEmail, &deadProcessorEmail)
@@ -45,25 +46,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 	deadProcessorPush := dead_notifications_processor.ConsoleDeadNotificationsProcessor{Name: "push"}
 	notificationsChannelPush := usecase.NewNotificationChannelUseCase(cfg, "Push processor", kafkaObserverPush, &consoleProcessorPush, &deadProcessorPush)
 
-	ff(notificationsChannelPush)
-
 	notificationsChannels := []*usecase.NotificationsChannelUseCase{notificationsChannelEmail, notificationsChannelPush}
 	notificationsUseCase := usecase.NewNotificationsUseCase(notificationsChannels)
 	notificationsUseCase.Run(ctx)
-}
-
-func ff(useCase *usecase.NotificationsChannelUseCase) {
-
-}
-
-func prepareKafkaClient(cfg *config.Config) (sarama.Client, error) {
-	brokers := []string{cfg.KafkaBrokers}
-
-	kafkaConfig := sarama.NewConfig()
-	kafkaConfig.Consumer.Return.Errors = true
-	kafkaConfig.Consumer.Group.Session.Timeout = time.Duration(cfg.KafkaTimeoutSeconds) * time.Second
-	kafkaConfig.Consumer.Group.Heartbeat.Interval = time.Duration(cfg.KafkaIntervalSeconds) * time.Second
-	kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
-
-	return sarama.NewClient(brokers, kafkaConfig)
 }

@@ -5,4 +5,5 @@ type Notification struct {
 	Subject      string `json:"subject"`
 	Body         string `json:"body"`
 	CurrentRetry int
+	Channel      string
 }

@@ -2,7 +2,7 @@ package notifications_processor
 
 import (
 	"crypto/tls"
-	"evrone_course_final/cmd/config"
+	"evrone_course_final/config"
 	"evrone_course_final/internal/entity"
 	"fmt"
 	mail "github.com/xhit/go-simple-mail/v2"
@@ -40,7 +40,7 @@ func (e *EmailNotificationsProcessor) Process(notification *entity.Notification)
 	smtpClient, err := server.Connect()
 
 	if err != nil {
-		return reportAndWrapError(err, notification.CurrentRetry)
+		return reportAndWrapErrorEmail(err, notification.CurrentRetry)
 	}
 
 	email := mail.NewMSG()
@@ -51,18 +51,18 @@ func (e *EmailNotificationsProcessor) Process(notification *entity.Notification)
 	email.SetBody(mail.TextHTML, notification.Body)
 
 	if email.Error != nil {
-		return reportAndWrapError(email.Error, notification.CurrentRetry)
+		return reportAndWrapErrorEmail(email.Error, notification.CurrentRetry)
 	}
 
 	err = email.Send(smtpClient)
 	if err != nil {
-		return reportAndWrapError(err, notification.CurrentRetry)
+		return reportAndWrapErrorEmail(err, notification.CurrentRetry)
 	}
 
 	return nil
 }
 
-func reportAndWrapError(err error, currentRetry int) error {
+func reportAndWrapErrorEmail(err error, currentRetry int) error {
 	slog.Error("EmailNotificationsProcessor error send notification", slog.String("error", err.Error()), slog.Int("current retry", currentRetry))
 	return fmt.Errorf("EmailNotificationsProcessor error send notification: %w", err)
 }

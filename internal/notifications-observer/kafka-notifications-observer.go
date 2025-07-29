@@ -3,7 +3,7 @@ package notifications_observer
 import (
 	"context"
 	"encoding/json"
-	"evrone_course_final/cmd/config"
+	"evrone_course_final/config"
 	"evrone_course_final/internal/entity"
 	"evrone_course_final/internal/usecase"
 	"fmt"

@@ -18,6 +18,7 @@ type Config struct {
 	KafkaTopicEmailNotifications      string `env:"KAFKA_TOPIC_EMAIL_NOTIFICATIONS"`
 	KafkaTopicPushNotifications       string `env:"KAFKA_TOPIC_PUSH_NOTIFICATIONS"`
 	KafkaTopicWSNotifications         string `env:"KAFKA_TOPIC_WS_NOTIFICATIONS"`
+	KafkaTopicDeadNotifications       string `env:"KAFKA_TOPIC_DEAD_NOTIFICATIONS"`
 	RedisAddr                         string `env:"REDIS_ADDR"`
 	RedisDB                           int    `env:"REDIS_DB"`
 	RedisMaxRetries                   int    `env:"HOST" env-default:"5"`
