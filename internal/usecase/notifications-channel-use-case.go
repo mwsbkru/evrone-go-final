@@ -24,17 +24,19 @@ func NewNotificationChannelUseCase(cfg *config.Config, name string, observer Not
 
 func (n *NotificationsChannelUseCase) Run(ctx context.Context, wg *sync.WaitGroup) {
 	n.wg = wg
-	n.notificationsObserver.Subscribe(n.subscriber, n.terminator)
+	n.notificationsObserver.Subscribe(n.getSubscriber(ctx), n.terminator)
 	n.notificationsObserver.StartListening(ctx)
 }
 
-func (n *NotificationsChannelUseCase) subscriber(ctx context.Context, notification *entity.Notification) {
-	go n.process(ctx, notification)
+func (n *NotificationsChannelUseCase) getSubscriber(ctx context.Context) NotificationsSubscriber {
+	return func(notification *entity.Notification) {
+		go n.process(ctx, notification)
+	}
 }
 
 func (n *NotificationsChannelUseCase) process(ctx context.Context, notification *entity.Notification) {
 	slog.Info("Start process notification", slog.String("process channel", n.Name), slog.Int("Retry number", notification.CurrentRetry))
-	err := n.notificationsProcessor.Process(notification)
+	err := n.notificationsProcessor.Process(ctx, notification)
 	if err != nil {
 		slog.Error("Can`t process notification", slog.String("error", err.Error()), slog.String("process channel", n.Name))
 		if notification.CurrentRetry < n.cfg.NotificationsRetryCount {
@@ -62,5 +64,7 @@ func (n *NotificationsChannelUseCase) process(ctx context.Context, notification 
 }
 
 func (n *NotificationsChannelUseCase) terminator() {
+	n.notificationsProcessor.Terminate()
+	n.deadNotificationsProcessor.Terminate()
 	n.wg.Done()
 }

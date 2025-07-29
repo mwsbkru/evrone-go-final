@@ -18,8 +18,7 @@ func NewRedisWSNotificationsProcessor(client *redis.Client) *RedisWSNotification
 	return &RedisWSNotificationsProcessor{client: client}
 }
 
-func (r *RedisWSNotificationsProcessor) Process(notification *entity.Notification) error {
-	return errors.New("boom!!!")
+func (r *RedisWSNotificationsProcessor) Process(ctx context.Context, notification *entity.Notification) error {
 	// Проверяем, что уведомление не nil
 	if notification == nil {
 		return errors.New("notification cannot be nil")
@@ -30,9 +29,6 @@ func (r *RedisWSNotificationsProcessor) Process(notification *entity.Notificatio
 	if err != nil {
 		return reportAndWrapErrorWs(err, notification.CurrentRetry)
 	}
-
-	// TODO: пробросить сюда контекст
-	ctx := context.Background()
 
 	// Формируем имя потока на основе email пользователя
 	streamName := fmt.Sprintf("notifications:%s", notification.UserEmail)
@@ -51,6 +47,11 @@ func (r *RedisWSNotificationsProcessor) Process(notification *entity.Notificatio
 	}
 
 	return nil
+}
+
+func (r *RedisWSNotificationsProcessor) Terminate() {
+	slog.Info("Terminating RedisWSNotificationsProcessor")
+	r.client.Close()
 }
 
 func reportAndWrapErrorWs(err error, currentRetry int) error {

@@ -31,20 +31,29 @@ func Run(ctx context.Context, cfg *config.Config) {
 		return
 	}
 
+	producerConfig := sarama.NewConfig()
+	producerConfig.Producer.Return.Successes = true
+	producerConfig.Producer.Partitioner = sarama.NewRandomPartitioner
+
+	producer, err := sarama.NewSyncProducer([]string{cfg.KafkaBrokers}, producerConfig)
+	if err != nil {
+		slog.Error("Can`t init Kafka WebSocket", slog.String("error", err.Error()))
+		return
+	}
+
+	deadProcessor := dead_notifications_processor.NewKafkaDeadNotificationsProcessor(producer, cfg)
+
 	topicEmailNotifications := cfg.KafkaTopicEmailNotifications
 	kafkaObserverEmail := notifications_observer.NewKafkaNotificationsObserver(topicEmailNotifications, cfg, consumerEmail)
 
-	// TODO: Добавить в dead notifications processor отправкку в кафку
 	processorEmail := notifications_processor.NewEmailNotificationsProcessor(cfg)
-	deadProcessorEmail := dead_notifications_processor.ConsoleDeadNotificationsProcessor{Name: "email"}
-	notificationsChannelEmail := usecase.NewNotificationChannelUseCase(cfg, "Email processor", kafkaObserverEmail, processorEmail, &deadProcessorEmail)
+	notificationsChannelEmail := usecase.NewNotificationChannelUseCase(cfg, "Email processor", kafkaObserverEmail, processorEmail, deadProcessor)
 
 	topicPushNotifications := cfg.KafkaTopicPushNotifications
 	kafkaObserverPush := notifications_observer.NewKafkaNotificationsObserver(topicPushNotifications, cfg, consumerPush)
 
 	consoleProcessorPush := notifications_processor.ConsoleNotificationsProcessor{Name: "push"}
-	deadProcessorPush := dead_notifications_processor.ConsoleDeadNotificationsProcessor{Name: "push"}
-	notificationsChannelPush := usecase.NewNotificationChannelUseCase(cfg, "Push processor", kafkaObserverPush, &consoleProcessorPush, &deadProcessorPush)
+	notificationsChannelPush := usecase.NewNotificationChannelUseCase(cfg, "Push processor", kafkaObserverPush, &consoleProcessorPush, deadProcessor)
 
 	notificationsChannels := []*usecase.NotificationsChannelUseCase{notificationsChannelEmail, notificationsChannelPush}
 	notificationsUseCase := usecase.NewNotificationsUseCase(notificationsChannels)

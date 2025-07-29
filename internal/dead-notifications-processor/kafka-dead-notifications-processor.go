@@ -11,8 +11,9 @@ import (
 )
 
 type KafkaDeadNotificationsProcessor struct {
-	producer sarama.SyncProducer
-	cfg      *config.Config
+	producer   sarama.SyncProducer
+	cfg        *config.Config
+	terminated bool
 }
 
 func NewKafkaDeadNotificationsProcessor(producer sarama.SyncProducer, cfg *config.Config) *KafkaDeadNotificationsProcessor {
@@ -20,7 +21,7 @@ func NewKafkaDeadNotificationsProcessor(producer sarama.SyncProducer, cfg *confi
 }
 
 // TODO добавить закрытые клиентов кафки на запись и чтение
-func (k KafkaDeadNotificationsProcessor) Process(notification *entity.Notification, err error) error {
+func (k *KafkaDeadNotificationsProcessor) Process(notification *entity.Notification, err error) error {
 	// Проверяем, что уведомление не nil
 	if notification == nil {
 		return reportAndWrapErrorDeadKafka(errors.New("notification cannot be nil"))
@@ -54,6 +55,15 @@ func (k KafkaDeadNotificationsProcessor) Process(notification *entity.Notificati
 	}
 
 	return nil
+}
+
+func (k *KafkaDeadNotificationsProcessor) Terminate() {
+	slog.Info("Terminating KafkaDeadNotificationsProcessor")
+
+	if !k.terminated {
+		k.terminated = true
+		k.producer.Close()
+	}
 }
 
 func reportAndWrapErrorDeadKafka(err error) error {
