@@ -11,8 +11,10 @@ COPY . .
 # Установка зависимостей проекта
 RUN go mod download
 
+ARG APP_SUBDIR
+
 # Сборка бинарника
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/async-notifications/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/${APP_SUBDIR}/main.go
 
 # Финальный образ
 FROM alpine:latest

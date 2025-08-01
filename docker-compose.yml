@@ -1,19 +1,77 @@
 version: '3.8'
 
 services:
-  # Сервис для Go приложения
-  go-app:
+  # TODO разобраться, почему не работает подключение общей секции
+  go-app-async-notifications:
     build:
       context: ./
       dockerfile: Dockerfile
+      args:
+        APP_SUBDIR: async-notifications
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - KAFKA_TOPIC_EMAIL_NOTIFICATIONS=notifications_email
+      - KAFKA_TOPIC_PUSH_NOTIFICATIONS=notifications_push
+      - KAFKA_TOPIC_WS_NOTIFICATIONS=notifications_ws
+      - KAFKA_TOPIC_DEAD_NOTIFICATIONS=dead_notifications
+      - SMTP_SERVER_HOST=mailhog
+      - SMTP_SERVER_PORT=1025
+    depends_on:
+      - kafka
+      - zookeeper
+    restart: always
+
+  go-app-ws-notifications:
+    build:
+      context: ./
+      dockerfile: Dockerfile
+      args:
+        APP_SUBDIR: ws-notifications
     ports:
       - "8080:8080"
     environment:
       - KAFKA_BROKERS=kafka:9092
+      - KAFKA_TOPIC_EMAIL_NOTIFICATIONS=notifications_email
+      - KAFKA_TOPIC_PUSH_NOTIFICATIONS=notifications_push
+      - KAFKA_TOPIC_WS_NOTIFICATIONS=notifications_ws
+      - KAFKA_TOPIC_DEAD_NOTIFICATIONS=dead_notifications
+      - REDIS_ADDR=redis:6379
+      - REDIS_DB=0
     depends_on:
       - kafka
       - zookeeper
-    restart: on-failure
+      - redisinsight
+    restart: always
+
+  redis:
+    image: redis:7.2.4
+    command: [ "redis-server" ]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  redisinsight:
+    image: redislabs/redisinsight:latest
+    ports:
+      - 5540:5540
+    volumes:
+      - redis-insight:/data
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: mailhog
+    restart: always
+    environment:
+      MH_AUTH_FILE: /mailhog.auth
+      MH_MAILDIR_PATH: /data
+      MH_STORAGE: maildir
+    volumes:
+      - ./mailhog.auth:/mailhog.auth:ro
+      - ./data:/data:rw
+    ports:
+      - "1025:1025" #127.0.0.1:1025:1025
+      - "8025:8025"
 
   # Сервис Zookeeper
   zookeeper:
@@ -52,3 +110,5 @@ services:
 volumes:
   kafka-data:
   zookeeper-data:
+  redis-insight:
+  redis-data:
