@@ -37,6 +37,7 @@ services:
       - KAFKA_TOPIC_DEAD_NOTIFICATIONS=dead_notifications
       - REDIS_ADDR=redis:6379
       - REDIS_DB=0
+      - WS_CHECK_ORIGIN=false
     depends_on:
       - kafka
       - zookeeper

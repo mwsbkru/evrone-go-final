@@ -3,6 +3,7 @@ package ws_notifications
 import (
 	"context"
 	"evrone_course_final/config"
+	"evrone_course_final/internal/controller/http"
 	dead_notifications_processor "evrone_course_final/internal/dead-notifications-processor"
 	notifications_observer "evrone_course_final/internal/notifications-observer"
 	notifications_processor "evrone_course_final/internal/notifications-processor"
@@ -56,5 +57,10 @@ func Run(ctx context.Context, cfg *config.Config) {
 
 	notificationsChannels := []*usecase.NotificationsChannelUseCase{notificationsChannelWs}
 	notificationsUseCase := usecase.NewNotificationsUseCase(notificationsChannels)
-	notificationsUseCase.Run(ctx)
+	go notificationsUseCase.Run(ctx)
+
+	slog.Info("Starting http server...")
+	wsNotificationsUseCase := usecase.NewWsNotificationsUseCase()
+	server := http.NewServer(cfg, wsNotificationsUseCase)
+	http.Serve(server, cfg)
 }
