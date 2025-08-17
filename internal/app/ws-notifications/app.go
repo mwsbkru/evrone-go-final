@@ -60,7 +60,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 	go notificationsUseCase.Run(ctx)
 
 	slog.Info("Starting http server...")
-	wsNotificationsUseCase := usecase.NewWsNotificationsUseCase()
+	wsNotificationsUseCase := usecase.NewWsNotificationsUseCase(redisClient)
 	server := http.NewServer(cfg, wsNotificationsUseCase)
 	http.Serve(server, cfg)
 }

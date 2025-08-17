@@ -1,6 +1,7 @@
 package http
 
 import (
+	"context"
 	"encoding/json"
 	"evrone_course_final/config"
 	"evrone_course_final/internal/entity/dto"
@@ -41,7 +42,8 @@ func (s *Server) SubscribeNotifications(writer http.ResponseWriter, request *htt
 		return
 	}
 
-	s.wsNotificationsUseCase.HandleConnection(userEmail, ws)
+	// TODO разобраться с контекстом тут
+	s.wsNotificationsUseCase.HandleConnection(context.TODO(), userEmail, ws)
 }
 
 func (s *Server) respondWithError(writer http.ResponseWriter, code int, message string) {
