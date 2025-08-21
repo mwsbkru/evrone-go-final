@@ -9,9 +9,11 @@ import (
 	notifications_processor "evrone_course_final/internal/notifications-processor"
 	"evrone_course_final/internal/tools"
 	"evrone_course_final/internal/usecase"
+	ws_notifications_receivers "evrone_course_final/internal/ws-notifications-receivers"
+	"log/slog"
+
 	"github.com/IBM/sarama"
 	"github.com/redis/go-redis/v9"
-	"log/slog"
 )
 
 func Run(ctx context.Context, cfg *config.Config) {
@@ -60,7 +62,10 @@ func Run(ctx context.Context, cfg *config.Config) {
 	go notificationsUseCase.Run(ctx)
 
 	slog.Info("Starting http server...")
-	wsNotificationsUseCase := usecase.NewWsNotificationsUseCase(redisClient)
+	wsNotificationsReceiver := ws_notifications_receivers.NewRedisWsNotificationsReceiver(redisClient, cfg)
+	wsNotificationsUseCase := usecase.NewWsNotificationsUseCase(redisClient, wsNotificationsReceiver)
+	wsNotificationsUseCase.Run(ctx)
+
 	server := http.NewServer(cfg, wsNotificationsUseCase)
 	http.Serve(server, cfg)
 }
