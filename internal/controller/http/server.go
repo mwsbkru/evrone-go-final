@@ -44,7 +44,6 @@ func (s *Server) SubscribeNotifications(ctx context.Context) func(http.ResponseW
 			return
 		}
 
-		// TODO разобраться с контекстом тут
 		s.wsNotificationsUseCase.HandleConnection(ctx, userEmail, ws)
 	}
 }

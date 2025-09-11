@@ -32,7 +32,6 @@ func (r *RedisWsNotificationsReceiver) Subscribe(receivedNotificationProcessor u
 
 func (r *RedisWsNotificationsReceiver) ReceiveNotifications(ctx context.Context, userEmail string) {
 	slog.Info("Start receive notifications from Redis for user", slog.String("user_email", userEmail))
-	// TODO Handle connection termination by user
 	for {
 		slog.Info("Waiting for reading message from redis or close connection", slog.String("user_email", userEmail))
 		select {
