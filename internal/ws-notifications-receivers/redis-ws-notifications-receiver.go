@@ -43,7 +43,7 @@ func (r *RedisWsNotificationsReceiver) ReceiveNotifications(ctx context.Context,
 		default:
 			err := r.readNotifications(ctx, userEmail)
 			if err != nil {
-				slog.Warn("Error processing notifications from Redis for user", slog.String("user_email", userEmail), slog.String("error", err.Error()))
+				slog.Warn("Warning processing notifications from Redis for user", slog.String("user_email", userEmail), slog.String("error", err.Error()))
 			}
 		}
 	}
@@ -61,7 +61,16 @@ func (r *RedisWsNotificationsReceiver) readNotifications(ctx context.Context, us
 			Block:   time.Duration(r.cfg.RedisTimeoutSeconds) * time.Second,
 		}).Result()
 	if err != nil {
-		return fmt.Errorf("can`t read WS notifications from Redis stream for user: %s; lastID: %s; error: %w", userEmail, lastID, err)
+		// Check if error is caused by Block option timeout
+		if err == redis.Nil ||
+			err.Error() == "context deadline exceeded" ||
+			err.Error() == "i/o timeout" ||
+			err.Error() == "redis: nil" {
+			// Return nil when error is caused by blocks option timeout
+			return nil
+		}
+		// Return other errors as before
+		return fmt.Errorf("can`t read WS notifications from Redis stream for user: %s; lastID: %s; error: %w; error type: %T", userEmail, lastID, err, err)
 	}
 
 	r.processEntries(ctx, userEmail, lastID, entries)

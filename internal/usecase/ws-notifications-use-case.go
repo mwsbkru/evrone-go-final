@@ -39,28 +39,27 @@ func (u *WsNotificationsUseCase) HandleConnection(ctx context.Context, userEmail
 }
 
 func (u *WsNotificationsUseCase) handleConnection(ctx context.Context, userEmail string, connection *websocket.Conn) {
-	defer connection.Close()
 	slog.Info("New WS connection", slog.String("user_email", userEmail))
 	defer slog.Info("WS connection closed", slog.String("user_email", userEmail))
 	ctx, cancel := context.WithCancel(ctx)
 	go u.wsNotificationsReceiver.ReceiveNotifications(ctx, userEmail)
-	u.handleConnectionClosed(userEmail, cancel)
+	u.handleConnectionClosedByUser(userEmail, cancel)
 }
 
-func (u *WsNotificationsUseCase) handleConnectionClosed(userEmail string, cancel context.CancelFunc) {
+func (u *WsNotificationsUseCase) handleConnectionClosedByUser(userEmail string, cancel context.CancelFunc) {
 	for {
 		slog.Info("Waiting for reading message from WS connection", slog.String("user_email", userEmail))
 
 		if conn, ok := u.connections[userEmail]; ok {
 			messageType, _, err := conn.ReadMessage()
 			if err != nil {
-				slog.Error("Error in handleConnectionClosed", slog.String("user_email", userEmail), slog.String("error", err.Error()))
+				slog.Error("Error in handleConnectionClosedByUser", slog.String("user_email", userEmail), slog.String("error", err.Error()))
 				cancel()
 				return
 			}
 
 			if messageType == websocket.CloseMessage {
-				slog.Error("WS connection closed by user", slog.String("user_email", userEmail))
+				slog.Info("WS connection closed by user", slog.String("user_email", userEmail))
 				cancel()
 				return
 			}
@@ -79,7 +78,12 @@ func (u *WsNotificationsUseCase) handleNotification(notification entity.Notifica
 }
 
 func (u *WsNotificationsUseCase) handleConnectionTermination(userEmail string) {
-	slog.Info("Terminating WS connection", slog.String("user_email", userEmail))
+	slog.Info("handleConnectionTermination run", slog.String("user_email", userEmail))
+	u.terminateConnection(userEmail)
+}
+
+func (u *WsNotificationsUseCase) terminateConnection(userEmail string) {
+	slog.Info("Termination connection", slog.String("user_email", userEmail))
 	if conn, ok := u.connections[userEmail]; ok {
 		delete(u.connections, userEmail)
 		conn.WriteMessage(websocket.TextMessage, []byte("connection closed by server"))

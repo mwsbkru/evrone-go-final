@@ -7,3 +7,8 @@ docker compose build && docker compose up
 }
 
 http://localhost:8080/notifications/subscribe?userEmail=w1@rty.ru
+
+кейсы
+- отлет клиента
+- закрытие коннекта клиентом
+- закрытие коннеккта сервером
