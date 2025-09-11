@@ -6,9 +6,10 @@ import (
 	"evrone_course_final/config"
 	"evrone_course_final/internal/entity/dto"
 	"evrone_course_final/internal/usecase"
-	websocket "github.com/gorilla/websocket"
 	"log/slog"
 	"net/http"
+
+	websocket "github.com/gorilla/websocket"
 )
 
 type Server struct {
@@ -29,21 +30,23 @@ func NewServer(cfg *config.Config, wsNotificationsUseCase *usecase.WsNotificatio
 	return &Server{cfg: cfg, wsNotificationsUseCase: wsNotificationsUseCase, upgrader: &upgrader}
 }
 
-func (s *Server) SubscribeNotifications(writer http.ResponseWriter, request *http.Request) {
-	userEmail := request.URL.Query().Get("userEmail")
-	if userEmail == "" {
-		s.respondWithError(writer, http.StatusBadRequest, "get param userEmail must be present")
-		return
-	}
+func (s *Server) SubscribeNotifications(ctx context.Context) func(http.ResponseWriter, *http.Request) {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		userEmail := request.URL.Query().Get("userEmail")
+		if userEmail == "" {
+			s.respondWithError(writer, http.StatusBadRequest, "get param userEmail must be present")
+			return
+		}
 
-	ws, err := s.upgrader.Upgrade(writer, request, nil)
-	if err != nil {
-		slog.Error("can`t prepare WS connection", slog.String("error", err.Error()))
-		return
-	}
+		ws, err := s.upgrader.Upgrade(writer, request, nil)
+		if err != nil {
+			slog.Error("can`t prepare WS connection", slog.String("error", err.Error()))
+			return
+		}
 
-	// TODO разобраться с контекстом тут
-	s.wsNotificationsUseCase.HandleConnection(context.TODO(), userEmail, ws)
+		// TODO разобраться с контекстом тут
+		s.wsNotificationsUseCase.HandleConnection(ctx, userEmail, ws)
+	}
 }
 
 func (s *Server) respondWithError(writer http.ResponseWriter, code int, message string) {

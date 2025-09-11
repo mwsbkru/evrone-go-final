@@ -67,5 +67,5 @@ func Run(ctx context.Context, cfg *config.Config) {
 	wsNotificationsUseCase.Run(ctx)
 
 	server := http.NewServer(cfg, wsNotificationsUseCase)
-	http.Serve(server, cfg)
+	http.Serve(ctx, server, cfg)
 }

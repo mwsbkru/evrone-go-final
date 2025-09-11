@@ -3,7 +3,9 @@ package usecase
 import (
 	"context"
 	"evrone_course_final/internal/entity"
+	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
@@ -47,31 +49,41 @@ func (u *WsNotificationsUseCase) handleConnection(ctx context.Context, userEmail
 
 func (u *WsNotificationsUseCase) handleConnectionClosed(userEmail string, cancel context.CancelFunc) {
 	for {
-		messageType, _, err := u.connections[userEmail].ReadMessage()
-		if err != nil {
-			slog.Error("Error reading message for close connection from WS connection", slog.String("user_email", userEmail), slog.String("error", err.Error()))
-			cancel()
-			return
-		}
+		slog.Info("Waiting for reading message from WS connection", slog.String("user_email", userEmail))
 
-		if messageType == websocket.CloseMessage {
-			slog.Error("WS connection closed by user", slog.String("user_email", userEmail))
-			cancel()
+		if conn, ok := u.connections[userEmail]; ok {
+			messageType, _, err := conn.ReadMessage()
+			if err != nil {
+				slog.Error("Error in handleConnectionClosed", slog.String("user_email", userEmail), slog.String("error", err.Error()))
+				cancel()
+				return
+			}
+
+			if messageType == websocket.CloseMessage {
+				slog.Error("WS connection closed by user", slog.String("user_email", userEmail))
+				cancel()
+				return
+			}
+		} else {
 			return
 		}
 	}
 }
 
 func (u *WsNotificationsUseCase) handleNotification(notification entity.Notification) {
-	u.connections[notification.UserEmail].WriteMessage(websocket.TextMessage, []byte(notification.Body))
+	if conn, ok := u.connections[notification.UserEmail]; ok {
+		currentTime := time.Now().Format("2006-01-02 15:04:05")
+		enrichedMessage := fmt.Sprintf("[%s] %s", currentTime, notification.Body)
+		conn.WriteMessage(websocket.TextMessage, []byte(enrichedMessage))
+	}
 }
 
 func (u *WsNotificationsUseCase) handleConnectionTermination(userEmail string) {
 	slog.Info("Terminating WS connection", slog.String("user_email", userEmail))
-	u.destroyConnection(userEmail)
-}
-
-func (u *WsNotificationsUseCase) destroyConnection(userEmail string) {
-	u.connections[userEmail].Close()
-	delete(u.connections, userEmail)
+	if conn, ok := u.connections[userEmail]; ok {
+		delete(u.connections, userEmail)
+		conn.WriteMessage(websocket.TextMessage, []byte("connection closed by server"))
+		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server"))
+		conn.Close()
+	}
 }
