@@ -49,7 +49,6 @@ func (n *NotificationsChannelUseCase) process(ctx context.Context, notification 
 				go n.process(ctx, notification)
 				timer.Stop()
 			case <-ctx.Done():
-				// TODO переделать использование контекста
 				slog.Info("Stop retry by ctx.Done()", slog.String("error", err.Error()), slog.String("process channel", n.Name), slog.Int("current retry", notification.CurrentRetry))
 			}
 		} else {

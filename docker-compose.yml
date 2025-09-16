@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-  # TODO разобраться, почему не работает подключение общей секции
   go-app-async-notifications:
     build:
       context: ./
@@ -12,7 +11,6 @@ services:
       - KAFKA_BROKERS=kafka:9092
       - KAFKA_TOPIC_EMAIL_NOTIFICATIONS=notifications_email
       - KAFKA_TOPIC_PUSH_NOTIFICATIONS=notifications_push
-      - KAFKA_TOPIC_WS_NOTIFICATIONS=notifications_ws
       - KAFKA_TOPIC_DEAD_NOTIFICATIONS=dead_notifications
       - SMTP_SERVER_HOST=mailhog
       - SMTP_SERVER_PORT=1025
@@ -31,8 +29,6 @@ services:
       - "8080:8080"
     environment:
       - KAFKA_BROKERS=kafka:9092
-      - KAFKA_TOPIC_EMAIL_NOTIFICATIONS=notifications_email
-      - KAFKA_TOPIC_PUSH_NOTIFICATIONS=notifications_push
       - KAFKA_TOPIC_WS_NOTIFICATIONS=notifications_ws
       - KAFKA_TOPIC_DEAD_NOTIFICATIONS=dead_notifications
       - REDIS_ADDR=redis:6379
