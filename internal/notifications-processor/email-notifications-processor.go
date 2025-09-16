@@ -2,13 +2,13 @@ package notifications_processor
 
 import (
 	"context"
-	"crypto/tls"
 	"evrone_course_final/config"
 	"evrone_course_final/internal/entity"
 	"fmt"
-	mail "github.com/xhit/go-simple-mail/v2"
 	"log/slog"
 	"time"
+
+	mail "github.com/xhit/go-simple-mail/v2"
 )
 
 type EmailNotificationsProcessor struct {
@@ -28,15 +28,12 @@ func (e *EmailNotificationsProcessor) Process(ctx context.Context, notification 
 	server.Password = e.cfg.SmtpPassword
 	server.Encryption = mail.EncryptionSTARTTLS
 
-	// TODO: переделать, чтобы держать коннект открытым
+	// раньше думал переделать, чтобы держать коннект открытым, но в итоге решил, что пока не нужно
 	server.KeepAlive = false
 
 	server.ConnectTimeout = time.Duration(e.cfg.SmtpTimeoutSeconds) * time.Second
 
 	server.SendTimeout = time.Duration(e.cfg.SmtpTimeoutSeconds) * time.Second
-
-	// TODO: убрать скип шифрования
-	server.TLSConfig = &tls.Config{InsecureSkipVerify: true}
 
 	smtpClient, err := server.Connect()
 

@@ -7,9 +7,10 @@ import (
 	"evrone_course_final/internal/entity"
 	"evrone_course_final/internal/usecase"
 	"fmt"
-	"github.com/IBM/sarama"
 	"log/slog"
 	"time"
+
+	"github.com/IBM/sarama"
 )
 
 type KafkaNotificationsObserver struct {
@@ -41,6 +42,7 @@ func (k *KafkaNotificationsObserver) StartListening(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			slog.Info("Terminating Kafka observer")
+			k.consumer.Close()
 			k.terminator()
 			return
 		case <-time.After(time.Duration(k.cfg.KafkaTimeoutSeconds) * time.Second):

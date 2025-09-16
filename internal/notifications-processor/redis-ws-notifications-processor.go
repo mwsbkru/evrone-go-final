@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"evrone_course_final/internal/entity"
+	"evrone_course_final/internal/tools"
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
@@ -31,7 +32,7 @@ func (r *RedisWSNotificationsProcessor) Process(ctx context.Context, notificatio
 	}
 
 	// Формируем имя потока на основе email пользователя
-	streamName := fmt.Sprintf("notifications:%s", notification.UserEmail)
+	streamName := tools.GetUserStreamName(notification.UserEmail)
 
 	// Добавляем сообщение в поток Redis
 	_, err = r.client.XAdd(ctx, &redis.XAddArgs{

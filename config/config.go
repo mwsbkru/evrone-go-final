@@ -9,6 +9,8 @@ import (
 type Config struct {
 	Host                              string `env:"HOST" env-default:"0.0.0.0"`
 	Port                              string `env:"PORT" env-default:"8080"`
+	WsCheckOrigin                     bool   `env:"WS_CHECK_ORIGIN" env-default:"true"`
+	WsAllowedOrigin                   string `env:"WS_ALLOWED_ORIGIN"`
 	NotificationsRetryCount           int    `env:"NOTIFICATIONS_RETRY_COUNT" env-default:"3"`
 	NotificationsRetryIntervalSeconds int    `env:"NOTIFICATIONS_RETRY_INTERVAL_SECONDS" env-default:"3"`
 	KafkaBrokers                      string `env:"KAFKA_BROKERS"`
