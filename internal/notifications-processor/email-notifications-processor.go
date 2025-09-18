@@ -6,41 +6,23 @@ import (
 	"evrone_course_final/internal/entity"
 	"fmt"
 	"log/slog"
-	"time"
 
 	mail "github.com/xhit/go-simple-mail/v2"
 )
 
 type EmailNotificationsProcessor struct {
-	cfg *config.Config
+	cfg        *config.Config
+	smtpClient *mail.SMTPClient
 }
 
-func NewEmailNotificationsProcessor(cfg *config.Config) *EmailNotificationsProcessor {
-	return &EmailNotificationsProcessor{cfg: cfg}
+func NewEmailNotificationsProcessor(cfg *config.Config, smtpClient *mail.SMTPClient) *EmailNotificationsProcessor {
+	return &EmailNotificationsProcessor{
+		cfg:        cfg,
+		smtpClient: smtpClient,
+	}
 }
 
 func (e *EmailNotificationsProcessor) Process(ctx context.Context, notification *entity.Notification) error {
-	server := mail.NewSMTPClient()
-
-	server.Host = e.cfg.SmtpServerHost
-	server.Port = e.cfg.SmtpServerPort
-	server.Username = e.cfg.SmtpUsername
-	server.Password = e.cfg.SmtpPassword
-	server.Encryption = mail.EncryptionSTARTTLS
-
-	// раньше думал переделать, чтобы держать коннект открытым, но в итоге решил, что пока не нужно
-	server.KeepAlive = false
-
-	server.ConnectTimeout = time.Duration(e.cfg.SmtpTimeoutSeconds) * time.Second
-
-	server.SendTimeout = time.Duration(e.cfg.SmtpTimeoutSeconds) * time.Second
-
-	smtpClient, err := server.Connect()
-
-	if err != nil {
-		return reportAndWrapErrorEmail(err, notification.CurrentRetry)
-	}
-
 	email := mail.NewMSG()
 	email.SetFrom(fmt.Sprintf("From Example <%s>", e.cfg.FromEmail)).
 		AddTo(notification.UserEmail).
@@ -52,7 +34,7 @@ func (e *EmailNotificationsProcessor) Process(ctx context.Context, notification 
 		return reportAndWrapErrorEmail(email.Error, notification.CurrentRetry)
 	}
 
-	err = email.Send(smtpClient)
+	err := email.Send(e.smtpClient)
 	if err != nil {
 		return reportAndWrapErrorEmail(err, notification.CurrentRetry)
 	}
@@ -62,6 +44,11 @@ func (e *EmailNotificationsProcessor) Process(ctx context.Context, notification 
 
 func (e *EmailNotificationsProcessor) Terminate() {
 	slog.Info("Terminating EmailNotificationsProcessor")
+	if e.smtpClient != nil {
+		if err := e.smtpClient.Close(); err != nil {
+			slog.Error("Error closing SMTP client", slog.String("error", err.Error()))
+		}
+	}
 }
 
 func reportAndWrapErrorEmail(err error, currentRetry int) error {
