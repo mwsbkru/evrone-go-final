@@ -52,6 +52,8 @@ func Run(ctx context.Context, cfg *config.Config) {
 		return
 	}
 
+	defer smtpClient.Close()
+
 	topicEmailNotifications := cfg.KafkaTopicEmailNotifications
 	kafkaObserverEmail := notifications_observer.NewKafkaNotificationsObserver(topicEmailNotifications, cfg, consumerEmail)
 

@@ -44,11 +44,6 @@ func (e *EmailNotificationsProcessor) Process(ctx context.Context, notification 
 
 func (e *EmailNotificationsProcessor) Terminate() {
 	slog.Info("Terminating EmailNotificationsProcessor")
-	if e.smtpClient != nil {
-		if err := e.smtpClient.Close(); err != nil {
-			slog.Error("Error closing SMTP client", slog.String("error", err.Error()))
-		}
-	}
 }
 
 func reportAndWrapErrorEmail(err error, currentRetry int) error {
