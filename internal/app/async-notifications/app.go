@@ -27,12 +27,14 @@ func Run(ctx context.Context, cfg *config.Config) {
 		slog.Error("Can`t init Kafka consumerEmail", slog.String("error", err.Error()))
 		return
 	}
+	defer consumerEmail.Close()
 
 	consumerPush, err := sarama.NewConsumerGroupFromClient(cfg.KafkaConsumerGroupID, kafkaClient)
 	if err != nil {
 		slog.Error("Can`t init Kafka consumerPush", slog.String("error", err.Error()))
 		return
 	}
+	defer consumerPush.Close()
 
 	producerConfig := sarama.NewConfig()
 	producerConfig.Producer.Return.Successes = true
@@ -56,13 +58,11 @@ func Run(ctx context.Context, cfg *config.Config) {
 
 	topicEmailNotifications := cfg.KafkaTopicEmailNotifications
 	kafkaObserverEmail := notifications_observer.NewKafkaNotificationsObserver(topicEmailNotifications, cfg, consumerEmail)
-
 	processorEmail := notifications_processor.NewEmailNotificationsProcessor(cfg, smtpClient)
 	notificationsChannelEmail := usecase.NewNotificationChannelUseCase(cfg, "Email processor", kafkaObserverEmail, processorEmail, deadProcessor)
 
 	topicPushNotifications := cfg.KafkaTopicPushNotifications
 	kafkaObserverPush := notifications_observer.NewKafkaNotificationsObserver(topicPushNotifications, cfg, consumerPush)
-
 	consoleProcessorPush := notifications_processor.ConsoleNotificationsProcessor{Name: "push"}
 	notificationsChannelPush := usecase.NewNotificationChannelUseCase(cfg, "Push processor", kafkaObserverPush, &consoleProcessorPush, deadProcessor)
 

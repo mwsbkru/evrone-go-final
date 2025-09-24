@@ -42,7 +42,6 @@ func (k *KafkaNotificationsObserver) StartListening(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			slog.Info("Terminating Kafka observer")
-			k.consumer.Close()
 			k.terminator()
 			return
 		case <-time.After(time.Duration(k.cfg.KafkaTimeoutSeconds) * time.Second):
