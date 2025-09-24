@@ -80,8 +80,7 @@ func initializeSMTPClient(cfg *config.Config) (*mail.SMTPClient, error) {
 	server.Password = cfg.SmtpPassword
 	server.Encryption = mail.EncryptionSTARTTLS
 
-	// раньше думал переделать, чтобы держать коннект открытым, но в итоге решил, что пока не нужно
-	server.KeepAlive = false
+	server.KeepAlive = true
 
 	server.ConnectTimeout = time.Duration(cfg.SmtpTimeoutSeconds) * time.Second
 	server.SendTimeout = time.Duration(cfg.SmtpTimeoutSeconds) * time.Second
