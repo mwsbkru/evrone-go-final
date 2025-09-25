@@ -34,6 +34,7 @@ func (u *WsNotificationsUseCase) Run(ctx context.Context) {
 }
 
 func (u *WsNotificationsUseCase) HandleConnection(ctx context.Context, userEmail string, connection *websocket.Conn) {
+	// TODO: Поддержка повторного подключения
 	u.connections[userEmail] = connection
 	go u.handleConnection(ctx, userEmail, connection)
 }

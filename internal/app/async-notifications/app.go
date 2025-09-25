@@ -21,6 +21,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 		slog.Error("Can`t init Kafka client", slog.String("error", err.Error()))
 		return
 	}
+	defer kafkaClient.Close()
 
 	consumerEmail, err := sarama.NewConsumerGroupFromClient(cfg.KafkaConsumerGroupID, kafkaClient)
 	if err != nil {
@@ -45,6 +46,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 		slog.Error("Can`t init Kafka WebSocket", slog.String("error", err.Error()))
 		return
 	}
+	defer producer.Close()
 
 	deadProcessor := dead_notifications_processor.NewKafkaDeadNotificationsProcessor(producer, cfg)
 
@@ -53,7 +55,6 @@ func Run(ctx context.Context, cfg *config.Config) {
 		slog.Error("Can't initialize SMTP client", slog.String("error", err.Error()))
 		return
 	}
-
 	defer smtpClient.Close()
 
 	topicEmailNotifications := cfg.KafkaTopicEmailNotifications

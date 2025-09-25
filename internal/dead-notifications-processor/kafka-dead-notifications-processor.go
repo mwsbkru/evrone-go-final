@@ -6,8 +6,9 @@ import (
 	"evrone_course_final/config"
 	"evrone_course_final/internal/entity"
 	"fmt"
-	"github.com/IBM/sarama"
 	"log/slog"
+
+	"github.com/IBM/sarama"
 )
 
 type KafkaDeadNotificationsProcessor struct {
@@ -59,11 +60,6 @@ func (k *KafkaDeadNotificationsProcessor) Process(notification *entity.Notificat
 
 func (k *KafkaDeadNotificationsProcessor) Terminate() {
 	slog.Info("Terminating KafkaDeadNotificationsProcessor")
-
-	if !k.terminated {
-		k.terminated = true
-		k.producer.Close()
-	}
 }
 
 func reportAndWrapErrorDeadKafka(err error) error {
