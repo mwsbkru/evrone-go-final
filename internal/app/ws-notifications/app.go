@@ -67,7 +67,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 
 	slog.Info("Starting http server...")
 	wsNotificationsReceiver := ws_notifications_receivers.NewRedisWsNotificationsReceiver(redisClient, cfg)
-	wsNotificationsUseCase := usecase.NewWsNotificationsUseCase(redisClient, wsNotificationsReceiver)
+	wsNotificationsUseCase := usecase.NewWsNotificationsUseCase(wsNotificationsReceiver)
 	wsNotificationsUseCase.Run(ctx)
 
 	server := http.NewServer(cfg, wsNotificationsUseCase)

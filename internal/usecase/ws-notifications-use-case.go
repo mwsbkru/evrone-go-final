@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/redis/go-redis/v9"
 )
 
 type ReceivedNotificationProcessor func(notification entity.Notification)
@@ -22,11 +21,10 @@ type WsNotificationsReceiver interface {
 type WsNotificationsUseCase struct {
 	connections             map[string]*websocket.Conn
 	wsNotificationsReceiver WsNotificationsReceiver
-	client                  *redis.Client
 }
 
-func NewWsNotificationsUseCase(client *redis.Client, wsNotificationsReceiver WsNotificationsReceiver) *WsNotificationsUseCase {
-	return &WsNotificationsUseCase{connections: make(map[string]*websocket.Conn), client: client, wsNotificationsReceiver: wsNotificationsReceiver}
+func NewWsNotificationsUseCase(wsNotificationsReceiver WsNotificationsReceiver) *WsNotificationsUseCase {
+	return &WsNotificationsUseCase{connections: make(map[string]*websocket.Conn), wsNotificationsReceiver: wsNotificationsReceiver}
 }
 
 func (u *WsNotificationsUseCase) Run(ctx context.Context) {
