@@ -21,7 +21,6 @@ func NewKafkaDeadNotificationsProcessor(producer sarama.SyncProducer, cfg *confi
 	return &KafkaDeadNotificationsProcessor{producer: producer, cfg: cfg}
 }
 
-// TODO добавить закрытые клиентов кафки на запись и чтение
 func (k *KafkaDeadNotificationsProcessor) Process(notification *entity.Notification, err error) error {
 	// Проверяем, что уведомление не nil
 	if notification == nil {

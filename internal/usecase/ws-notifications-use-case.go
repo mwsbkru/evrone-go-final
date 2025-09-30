@@ -32,7 +32,16 @@ func (u *WsNotificationsUseCase) Run(ctx context.Context) {
 }
 
 func (u *WsNotificationsUseCase) HandleConnection(ctx context.Context, userEmail string, connection *websocket.Conn) {
-	// TODO: Поддержка повторного подключения
+	currentConnection, ok := u.connections[userEmail]
+	if ok {
+		currentConnection.WriteMessage(websocket.TextMessage, prepareMessageForSending("new attempt to connect to WS, terminating current connection"))
+		u.handleConnectionTermination(userEmail)
+
+		connection.WriteMessage(websocket.TextMessage, prepareMessageForSending("terminating current connection, try again"))
+		connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server"))
+		connection.Close()
+	}
+
 	u.connections[userEmail] = connection
 	go u.handleConnection(ctx, userEmail, connection)
 }
@@ -70,9 +79,7 @@ func (u *WsNotificationsUseCase) handleConnectionClosedByUser(userEmail string, 
 
 func (u *WsNotificationsUseCase) handleNotification(notification entity.Notification) {
 	if conn, ok := u.connections[notification.UserEmail]; ok {
-		currentTime := time.Now().Format("2006-01-02 15:04:05")
-		enrichedMessage := fmt.Sprintf("[%s] %s", currentTime, notification.Body)
-		conn.WriteMessage(websocket.TextMessage, []byte(enrichedMessage))
+		conn.WriteMessage(websocket.TextMessage, prepareMessageForSending(notification.Body))
 	}
 }
 
@@ -85,8 +92,13 @@ func (u *WsNotificationsUseCase) terminateConnection(userEmail string) {
 	slog.Info("Termination connection", slog.String("user_email", userEmail))
 	if conn, ok := u.connections[userEmail]; ok {
 		delete(u.connections, userEmail)
-		conn.WriteMessage(websocket.TextMessage, []byte("connection closed by server"))
+		conn.WriteMessage(websocket.TextMessage, prepareMessageForSending("connection closed by server"))
 		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server"))
 		conn.Close()
 	}
+}
+
+func prepareMessageForSending(message string) []byte {
+	currentTime := time.Now().Format("2006-01-02 15:04:05")
+	return []byte(fmt.Sprintf("[%s] %s", currentTime, message))
 }
