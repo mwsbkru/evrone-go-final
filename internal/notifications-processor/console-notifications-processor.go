@@ -18,7 +18,3 @@ func (c *ConsoleNotificationsProcessor) Process(ctx context.Context, notificatio
 	slog.Info("---------------------------------------------------")
 	return errors.New("Bang!")
 }
-
-func (c *ConsoleNotificationsProcessor) Terminate() {
-	slog.Info("Terminating ConsoleNotificationsProcessor")
-}

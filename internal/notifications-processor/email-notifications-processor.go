@@ -42,10 +42,6 @@ func (e *EmailNotificationsProcessor) Process(ctx context.Context, notification 
 	return nil
 }
 
-func (e *EmailNotificationsProcessor) Terminate() {
-	slog.Info("Terminating EmailNotificationsProcessor")
-}
-
 func reportAndWrapErrorEmail(err error, currentRetry int) error {
 	slog.Error("EmailNotificationsProcessor error send notification", slog.String("error", err.Error()), slog.Int("current retry", currentRetry))
 	return fmt.Errorf("EmailNotificationsProcessor error send notification: %w", err)

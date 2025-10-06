@@ -63,7 +63,5 @@ func (n *NotificationsChannelUseCase) process(ctx context.Context, notification 
 }
 
 func (n *NotificationsChannelUseCase) terminator() {
-	n.notificationsProcessor.Terminate()
-	n.deadNotificationsProcessor.Terminate()
 	n.wg.Done()
 }

@@ -17,7 +17,3 @@ func (c *ConsoleDeadNotificationsProcessor) Process(notification *entity.Notific
 	slog.Info("---------------------------------------------------")
 	return nil
 }
-
-func (c *ConsoleDeadNotificationsProcessor) Terminate() {
-	slog.Info("Terminating ConsoleDeadNotificationsProcessor")
-}

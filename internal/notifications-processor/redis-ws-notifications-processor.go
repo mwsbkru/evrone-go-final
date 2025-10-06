@@ -51,10 +51,6 @@ func (r *RedisWSNotificationsProcessor) Process(ctx context.Context, notificatio
 	return nil
 }
 
-func (r *RedisWSNotificationsProcessor) Terminate() {
-	slog.Info("Terminating RedisWSNotificationsProcessor")
-}
-
 func reportAndWrapErrorWs(err error, currentRetry int) error {
 	slog.Error("EmailNotificationsProcessor error send notification", slog.String("error", err.Error()), slog.Int("current retry", currentRetry))
 	return fmt.Errorf("EmailNotificationsProcessor error send notification: %w", err)

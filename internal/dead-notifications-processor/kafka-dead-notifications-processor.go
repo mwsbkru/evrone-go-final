@@ -12,9 +12,8 @@ import (
 )
 
 type KafkaDeadNotificationsProcessor struct {
-	producer   sarama.SyncProducer
-	cfg        *config.Config
-	terminated bool
+	producer sarama.SyncProducer
+	cfg      *config.Config
 }
 
 func NewKafkaDeadNotificationsProcessor(producer sarama.SyncProducer, cfg *config.Config) *KafkaDeadNotificationsProcessor {
@@ -55,10 +54,6 @@ func (k *KafkaDeadNotificationsProcessor) Process(notification *entity.Notificat
 	}
 
 	return nil
-}
-
-func (k *KafkaDeadNotificationsProcessor) Terminate() {
-	slog.Info("Terminating KafkaDeadNotificationsProcessor")
 }
 
 func reportAndWrapErrorDeadKafka(err error) error {
