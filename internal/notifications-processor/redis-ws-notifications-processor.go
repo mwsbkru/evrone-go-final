@@ -7,8 +7,9 @@ import (
 	"evrone_course_final/internal/entity"
 	"evrone_course_final/internal/tools"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"log/slog"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type RedisWSNotificationsProcessor struct {
@@ -48,11 +49,6 @@ func (r *RedisWSNotificationsProcessor) Process(ctx context.Context, notificatio
 	}
 
 	return nil
-}
-
-func (r *RedisWSNotificationsProcessor) Terminate() {
-	slog.Info("Terminating RedisWSNotificationsProcessor")
-	r.client.Close()
 }
 
 func reportAndWrapErrorWs(err error, currentRetry int) error {

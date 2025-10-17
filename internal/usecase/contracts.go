@@ -15,10 +15,8 @@ type NotificationsObserver interface {
 
 type NotificationsProcessor interface {
 	Process(ctx context.Context, notification *entity.Notification) error
-	Terminate()
 }
 
 type DeadNotificationsProcessor interface {
 	Process(notification *entity.Notification, err error) error
-	Terminate()
 }

@@ -22,17 +22,20 @@ func Run(ctx context.Context, cfg *config.Config) {
 		slog.Error("Can`t init Kafka client", slog.String("error", err.Error()))
 		return
 	}
+	defer kafkaClient.Close()
 
 	redisClient := redis.NewClient(&redis.Options{
 		Addr: cfg.RedisAddr,
 		DB:   cfg.RedisDB,
 	})
+	defer redisClient.Close()
 
 	consumerWs, err := sarama.NewConsumerGroupFromClient(cfg.KafkaConsumerGroupID, kafkaClient)
 	if err != nil {
 		slog.Error("Can`t init Kafka WebSocket", slog.String("error", err.Error()))
 		return
 	}
+	defer consumerWs.Close()
 
 	err = tools.EnsureTopicExists(cfg.KafkaTopicDeadNotifications, kafkaClient)
 	if err != nil {
@@ -49,6 +52,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 		slog.Error("Can`t init Kafka WebSocket", slog.String("error", err.Error()))
 		return
 	}
+	defer producer.Close()
 
 	topicWsNotifications := cfg.KafkaTopicWSNotifications
 	kafkaObserverWs := notifications_observer.NewKafkaNotificationsObserver(topicWsNotifications, cfg, consumerWs)
@@ -63,7 +67,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 
 	slog.Info("Starting http server...")
 	wsNotificationsReceiver := ws_notifications_receivers.NewRedisWsNotificationsReceiver(redisClient, cfg)
-	wsNotificationsUseCase := usecase.NewWsNotificationsUseCase(redisClient, wsNotificationsReceiver)
+	wsNotificationsUseCase := usecase.NewWsNotificationsUseCase(wsNotificationsReceiver)
 	wsNotificationsUseCase.Run(ctx)
 
 	server := http.NewServer(cfg, wsNotificationsUseCase)

@@ -6,21 +6,20 @@ import (
 	"evrone_course_final/config"
 	"evrone_course_final/internal/entity"
 	"fmt"
-	"github.com/IBM/sarama"
 	"log/slog"
+
+	"github.com/IBM/sarama"
 )
 
 type KafkaDeadNotificationsProcessor struct {
-	producer   sarama.SyncProducer
-	cfg        *config.Config
-	terminated bool
+	producer sarama.SyncProducer
+	cfg      *config.Config
 }
 
 func NewKafkaDeadNotificationsProcessor(producer sarama.SyncProducer, cfg *config.Config) *KafkaDeadNotificationsProcessor {
 	return &KafkaDeadNotificationsProcessor{producer: producer, cfg: cfg}
 }
 
-// TODO добавить закрытые клиентов кафки на запись и чтение
 func (k *KafkaDeadNotificationsProcessor) Process(notification *entity.Notification, err error) error {
 	// Проверяем, что уведомление не nil
 	if notification == nil {
@@ -55,15 +54,6 @@ func (k *KafkaDeadNotificationsProcessor) Process(notification *entity.Notificat
 	}
 
 	return nil
-}
-
-func (k *KafkaDeadNotificationsProcessor) Terminate() {
-	slog.Info("Terminating KafkaDeadNotificationsProcessor")
-
-	if !k.terminated {
-		k.terminated = true
-		k.producer.Close()
-	}
 }
 
 func reportAndWrapErrorDeadKafka(err error) error {

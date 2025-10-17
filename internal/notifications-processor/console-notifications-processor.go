@@ -2,6 +2,7 @@ package notifications_processor
 
 import (
 	"context"
+	"errors"
 	"evrone_course_final/internal/entity"
 	"log/slog"
 )
@@ -15,9 +16,5 @@ func (c *ConsoleNotificationsProcessor) Process(ctx context.Context, notificatio
 	slog.Info(c.Name)
 	slog.Info(notification.Body)
 	slog.Info("---------------------------------------------------")
-	return nil
-}
-
-func (c *ConsoleNotificationsProcessor) Terminate() {
-	slog.Info("Terminating ConsoleNotificationsProcessor")
+	return errors.New("Bang!")
 }
