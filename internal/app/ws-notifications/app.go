@@ -10,17 +10,17 @@ import (
 	"evrone_course_final/internal/tools"
 	"evrone_course_final/internal/usecase"
 	ws_notifications_receivers "evrone_course_final/internal/ws-notifications-receivers"
+	"fmt"
 	"log/slog"
 
 	"github.com/IBM/sarama"
 	"github.com/redis/go-redis/v9"
 )
 
-func Run(ctx context.Context, cfg *config.Config) {
+func Run(ctx context.Context, cfg *config.Config) error {
 	kafkaClient, err := tools.PrepareKafkaClient(cfg)
 	if err != nil {
-		slog.Error("Can`t init Kafka client", slog.String("error", err.Error()))
-		return
+		return fmt.Errorf("can't init Kafka client: %w", err)
 	}
 	defer kafkaClient.Close()
 
@@ -32,15 +32,13 @@ func Run(ctx context.Context, cfg *config.Config) {
 
 	consumerWs, err := sarama.NewConsumerGroupFromClient(cfg.KafkaConsumerGroupID, kafkaClient)
 	if err != nil {
-		slog.Error("Can`t init Kafka WebSocket", slog.String("error", err.Error()))
-		return
+		return fmt.Errorf("can't init Kafka WebSocket consumer: %w", err)
 	}
 	defer consumerWs.Close()
 
 	err = tools.EnsureTopicExists(cfg.KafkaTopicDeadNotifications, kafkaClient)
 	if err != nil {
-		slog.Error("Can`t prepare topic for dead notifications", slog.String("error", err.Error()))
-		return
+		return fmt.Errorf("can't prepare topic for dead notifications: %w", err)
 	}
 
 	producerConfig := sarama.NewConfig()
@@ -49,8 +47,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 
 	producer, err := sarama.NewSyncProducer([]string{cfg.KafkaBrokers}, producerConfig)
 	if err != nil {
-		slog.Error("Can`t init Kafka WebSocket", slog.String("error", err.Error()))
-		return
+		return fmt.Errorf("can't init Kafka producer: %w", err)
 	}
 	defer producer.Close()
 
@@ -72,4 +69,6 @@ func Run(ctx context.Context, cfg *config.Config) {
 
 	server := http.NewServer(cfg, wsNotificationsUseCase)
 	http.Serve(ctx, server, cfg)
+
+	return nil
 }

@@ -8,32 +8,29 @@ import (
 	notifications_processor "evrone_course_final/internal/notifications-processor"
 	"evrone_course_final/internal/tools"
 	"evrone_course_final/internal/usecase"
-	"log/slog"
+	"fmt"
 	"time"
 
 	"github.com/IBM/sarama"
 	mail "github.com/xhit/go-simple-mail/v2"
 )
 
-func Run(ctx context.Context, cfg *config.Config) {
+func Run(ctx context.Context, cfg *config.Config) error {
 	kafkaClient, err := tools.PrepareKafkaClient(cfg)
 	if err != nil {
-		slog.Error("Can`t init Kafka client", slog.String("error", err.Error()))
-		return
+		return fmt.Errorf("can't init Kafka client: %w", err)
 	}
 	defer kafkaClient.Close()
 
 	consumerEmail, err := sarama.NewConsumerGroupFromClient(cfg.KafkaConsumerGroupID, kafkaClient)
 	if err != nil {
-		slog.Error("Can`t init Kafka consumerEmail", slog.String("error", err.Error()))
-		return
+		return fmt.Errorf("can't init Kafka consumerEmail: %w", err)
 	}
 	defer consumerEmail.Close()
 
 	consumerPush, err := sarama.NewConsumerGroupFromClient(cfg.KafkaConsumerGroupID, kafkaClient)
 	if err != nil {
-		slog.Error("Can`t init Kafka consumerPush", slog.String("error", err.Error()))
-		return
+		return fmt.Errorf("can't init Kafka consumerPush: %w", err)
 	}
 	defer consumerPush.Close()
 
@@ -43,8 +40,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 
 	producer, err := sarama.NewSyncProducer([]string{cfg.KafkaBrokers}, producerConfig)
 	if err != nil {
-		slog.Error("Can`t init Kafka WebSocket", slog.String("error", err.Error()))
-		return
+		return fmt.Errorf("can't init Kafka producer: %w", err)
 	}
 	defer producer.Close()
 
@@ -52,8 +48,7 @@ func Run(ctx context.Context, cfg *config.Config) {
 
 	smtpClient, err := initializeSMTPClient(cfg)
 	if err != nil {
-		slog.Error("Can't initialize SMTP client", slog.String("error", err.Error()))
-		return
+		return fmt.Errorf("can't initialize SMTP client: %w", err)
 	}
 	defer smtpClient.Close()
 
@@ -70,6 +65,8 @@ func Run(ctx context.Context, cfg *config.Config) {
 	notificationsChannels := []*usecase.NotificationsChannelUseCase{notificationsChannelEmail, notificationsChannelPush}
 	notificationsUseCase := usecase.NewNotificationsUseCase(notificationsChannels)
 	notificationsUseCase.Run(ctx)
+
+	return nil
 }
 
 // initializeSMTPClient creates and configures an SMTP client based on the provided configuration
