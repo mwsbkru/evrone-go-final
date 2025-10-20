@@ -13,10 +13,13 @@ func main() {
 	cfg, err := config.NewConfig()
 	if err != nil {
 		slog.Error("Не удалось загрузить конфигурацию приложения", slog.String("error", err.Error()))
+		return
 	}
 
 	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
-	ws_notifications.Run(ctx, cfg)
+	if err := ws_notifications.Run(ctx, cfg); err != nil {
+		slog.Error("Failed to run WebSocket notifications service", slog.String("error", err.Error()))
+	}
 }
