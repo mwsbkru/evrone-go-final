@@ -8,6 +8,8 @@ import (
 
 // WSConfig WebSocket configuration
 type WSConfig struct {
+	Host          string `env:"HOST" env-default:"0.0.0.0"`
+	Port          string `env:"PORT" env-default:"8080"`
 	CheckOrigin   bool   `env:"WS_CHECK_ORIGIN" env-default:"true"`
 	AllowedOrigin string `env:"WS_ALLOWED_ORIGIN"`
 }
@@ -44,10 +46,8 @@ type EmailConfig struct {
 
 // Config Main config of application
 type Config struct {
-	Host                              string `env:"HOST" env-default:"0.0.0.0"`
-	Port                              string `env:"PORT" env-default:"8080"`
-	NotificationsRetryCount           int    `env:"NOTIFICATIONS_RETRY_COUNT" env-default:"3"`
-	NotificationsRetryIntervalSeconds int    `env:"NOTIFICATIONS_RETRY_INTERVAL_SECONDS" env-default:"3"`
+	NotificationsRetryCount           int `env:"NOTIFICATIONS_RETRY_COUNT" env-default:"3"`
+	NotificationsRetryIntervalSeconds int `env:"NOTIFICATIONS_RETRY_INTERVAL_SECONDS" env-default:"3"`
 	WS                                WSConfig
 	Kafka                             KafkaConfig
 	Redis                             RedisConfig
