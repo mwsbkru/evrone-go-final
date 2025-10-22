@@ -43,7 +43,7 @@ func (k *KafkaDeadNotificationsProcessor) Process(notification *entity.Notificat
 
 	// Создаем сообщение для Kafka
 	msg := &sarama.ProducerMessage{
-		Topic: k.cfg.KafkaTopicDeadNotifications, // имя топика Kafka
+		Topic: k.cfg.Kafka.TopicDeadNotifications, // имя топика Kafka
 		Value: sarama.StringEncoder(payloadJSON),
 	}
 

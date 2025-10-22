@@ -22,13 +22,13 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 	defer kafkaClient.Close()
 
-	consumerEmail, err := sarama.NewConsumerGroupFromClient(cfg.KafkaConsumerGroupID, kafkaClient)
+	consumerEmail, err := sarama.NewConsumerGroupFromClient(cfg.Kafka.ConsumerGroupID, kafkaClient)
 	if err != nil {
 		return fmt.Errorf("can't init Kafka consumerEmail: %w", err)
 	}
 	defer consumerEmail.Close()
 
-	consumerPush, err := sarama.NewConsumerGroupFromClient(cfg.KafkaConsumerGroupID, kafkaClient)
+	consumerPush, err := sarama.NewConsumerGroupFromClient(cfg.Kafka.ConsumerGroupID, kafkaClient)
 	if err != nil {
 		return fmt.Errorf("can't init Kafka consumerPush: %w", err)
 	}
@@ -38,7 +38,7 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	producerConfig.Producer.Return.Successes = true
 	producerConfig.Producer.Partitioner = sarama.NewRandomPartitioner
 
-	producer, err := sarama.NewSyncProducer([]string{cfg.KafkaBrokers}, producerConfig)
+	producer, err := sarama.NewSyncProducer([]string{cfg.Kafka.Brokers}, producerConfig)
 	if err != nil {
 		return fmt.Errorf("can't init Kafka producer: %w", err)
 	}
@@ -52,12 +52,12 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	}
 	defer smtpClient.Close()
 
-	topicEmailNotifications := cfg.KafkaTopicEmailNotifications
+	topicEmailNotifications := cfg.Kafka.TopicEmailNotifications
 	kafkaObserverEmail := notifications_observer.NewKafkaNotificationsObserver(topicEmailNotifications, cfg, consumerEmail)
 	processorEmail := notifications_processor.NewEmailNotificationsProcessor(cfg, smtpClient)
 	notificationsChannelEmail := usecase.NewNotificationChannelUseCase(cfg, "Email processor", kafkaObserverEmail, processorEmail, deadProcessor)
 
-	topicPushNotifications := cfg.KafkaTopicPushNotifications
+	topicPushNotifications := cfg.Kafka.TopicPushNotifications
 	kafkaObserverPush := notifications_observer.NewKafkaNotificationsObserver(topicPushNotifications, cfg, consumerPush)
 	consoleProcessorPush := notifications_processor.ConsoleNotificationsProcessor{Name: "push"}
 	notificationsChannelPush := usecase.NewNotificationChannelUseCase(cfg, "Push processor", kafkaObserverPush, &consoleProcessorPush, deadProcessor)
@@ -72,16 +72,16 @@ func Run(ctx context.Context, cfg *config.Config) error {
 // initializeSMTPClient creates and configures an SMTP client based on the provided configuration
 func initializeSMTPClient(cfg *config.Config) (*mail.SMTPClient, error) {
 	server := mail.NewSMTPClient()
-	server.Host = cfg.SmtpServerHost
-	server.Port = cfg.SmtpServerPort
-	server.Username = cfg.SmtpUsername
-	server.Password = cfg.SmtpPassword
+	server.Host = cfg.Email.SmtpServerHost
+	server.Port = cfg.Email.SmtpServerPort
+	server.Username = cfg.Email.SmtpUsername
+	server.Password = cfg.Email.SmtpPassword
 	server.Encryption = mail.EncryptionSTARTTLS
 
 	server.KeepAlive = true
 
-	server.ConnectTimeout = time.Duration(cfg.SmtpTimeoutSeconds) * time.Second
-	server.SendTimeout = time.Duration(cfg.SmtpTimeoutSeconds) * time.Second
+	server.ConnectTimeout = time.Duration(cfg.Email.SmtpTimeoutSeconds) * time.Second
+	server.SendTimeout = time.Duration(cfg.Email.SmtpTimeoutSeconds) * time.Second
 
 	return server.Connect()
 }

@@ -25,18 +25,18 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	defer kafkaClient.Close()
 
 	redisClient := redis.NewClient(&redis.Options{
-		Addr: cfg.RedisAddr,
-		DB:   cfg.RedisDB,
+		Addr: cfg.Redis.Addr,
+		DB:   cfg.Redis.DB,
 	})
 	defer redisClient.Close()
 
-	consumerWs, err := sarama.NewConsumerGroupFromClient(cfg.KafkaConsumerGroupID, kafkaClient)
+	consumerWs, err := sarama.NewConsumerGroupFromClient(cfg.Kafka.ConsumerGroupID, kafkaClient)
 	if err != nil {
 		return fmt.Errorf("can't init Kafka WebSocket consumer: %w", err)
 	}
 	defer consumerWs.Close()
 
-	err = tools.EnsureTopicExists(cfg.KafkaTopicDeadNotifications, kafkaClient)
+	err = tools.EnsureTopicExists(cfg.Kafka.TopicDeadNotifications, kafkaClient)
 	if err != nil {
 		return fmt.Errorf("can't prepare topic for dead notifications: %w", err)
 	}
@@ -45,13 +45,13 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	producerConfig.Producer.Return.Successes = true
 	producerConfig.Producer.Partitioner = sarama.NewRandomPartitioner
 
-	producer, err := sarama.NewSyncProducer([]string{cfg.KafkaBrokers}, producerConfig)
+	producer, err := sarama.NewSyncProducer([]string{cfg.Kafka.Brokers}, producerConfig)
 	if err != nil {
 		return fmt.Errorf("can't init Kafka producer: %w", err)
 	}
 	defer producer.Close()
 
-	topicWsNotifications := cfg.KafkaTopicWSNotifications
+	topicWsNotifications := cfg.Kafka.TopicWSNotifications
 	kafkaObserverWs := notifications_observer.NewKafkaNotificationsObserver(topicWsNotifications, cfg, consumerWs)
 
 	processorWs := notifications_processor.NewRedisWSNotificationsProcessor(redisClient)

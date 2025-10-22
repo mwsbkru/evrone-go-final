@@ -24,7 +24,7 @@ func NewServer(cfg *config.Config, wsNotificationsUseCase *usecase.WsNotificatio
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			return !cfg.WsCheckOrigin || origin == cfg.WsAllowedOrigin
+			return !cfg.WS.CheckOrigin || origin == cfg.WS.AllowedOrigin
 		},
 	}
 	return &Server{cfg: cfg, wsNotificationsUseCase: wsNotificationsUseCase, upgrader: &upgrader}

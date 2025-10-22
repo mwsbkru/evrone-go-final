@@ -24,7 +24,7 @@ func NewEmailNotificationsProcessor(cfg *config.Config, smtpClient *mail.SMTPCli
 
 func (e *EmailNotificationsProcessor) Process(ctx context.Context, notification *entity.Notification) error {
 	email := mail.NewMSG()
-	email.SetFrom(fmt.Sprintf("From Example <%s>", e.cfg.FromEmail)).
+	email.SetFrom(fmt.Sprintf("From Example <%s>", e.cfg.Email.FromEmail)).
 		AddTo(notification.UserEmail).
 		SetSubject(notification.Subject)
 

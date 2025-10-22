@@ -44,8 +44,8 @@ func (k *KafkaNotificationsObserver) StartListening(ctx context.Context) {
 			slog.Info("Terminating Kafka observer")
 			k.terminator()
 			return
-		case <-time.After(time.Duration(k.cfg.KafkaTimeoutSeconds) * time.Second):
-			slog.Info(fmt.Sprintf("Listening topic %s timeout %d", k.topicName, k.cfg.KafkaTimeoutSeconds))
+		case <-time.After(time.Duration(k.cfg.Kafka.TimeoutSeconds) * time.Second):
+			slog.Info(fmt.Sprintf("Listening topic %s timeout %d", k.topicName, k.cfg.Kafka.TimeoutSeconds))
 		}
 	}
 }

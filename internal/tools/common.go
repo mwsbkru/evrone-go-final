@@ -3,18 +3,19 @@ package tools
 import (
 	"evrone_course_final/config"
 	"fmt"
-	"github.com/IBM/sarama"
 	"log/slog"
 	"time"
+
+	"github.com/IBM/sarama"
 )
 
 func PrepareKafkaClient(cfg *config.Config) (sarama.Client, error) {
-	brokers := []string{cfg.KafkaBrokers}
+	brokers := []string{cfg.Kafka.Brokers}
 
 	kafkaConfig := sarama.NewConfig()
 	kafkaConfig.Consumer.Return.Errors = true
-	kafkaConfig.Consumer.Group.Session.Timeout = time.Duration(cfg.KafkaTimeoutSeconds) * time.Second
-	kafkaConfig.Consumer.Group.Heartbeat.Interval = time.Duration(cfg.KafkaIntervalSeconds) * time.Second
+	kafkaConfig.Consumer.Group.Session.Timeout = time.Duration(cfg.Kafka.TimeoutSeconds) * time.Second
+	kafkaConfig.Consumer.Group.Heartbeat.Interval = time.Duration(cfg.Kafka.IntervalSeconds) * time.Second
 	kafkaConfig.Consumer.Offsets.Initial = sarama.OffsetOldest
 
 	return sarama.NewClient(brokers, kafkaConfig)

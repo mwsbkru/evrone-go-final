@@ -57,7 +57,7 @@ func (r *RedisWsNotificationsReceiver) readNotifications(ctx context.Context, us
 	entries, err := r.redisClient.XRead(ctx,
 		&redis.XReadArgs{
 			Streams: []string{tools.GetUserStreamName(userEmail), lastID},
-			Block:   time.Duration(r.cfg.RedisTimeoutSeconds) * time.Second,
+			Block:   time.Duration(r.cfg.Redis.TimeoutSeconds) * time.Second,
 		}).Result()
 	if err != nil {
 		// Check if error is caused by Block option timeout
