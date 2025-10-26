@@ -1,4 +1,4 @@
-package usecase
+package service
 
 import (
 	"context"
@@ -7,15 +7,15 @@ import (
 	"sync"
 )
 
-type NotificationsUseCase struct {
-	notificationChannelUseCase []*NotificationsChannelUseCase
+type NotificationsService struct {
+	notificationChannelUseCase []*NotificationsChannel
 }
 
-func NewNotificationsUseCase(notificationChannelUseCase []*NotificationsChannelUseCase) *NotificationsUseCase {
-	return &NotificationsUseCase{notificationChannelUseCase: notificationChannelUseCase}
+func NewNotificationsService(notificationChannelUseCase []*NotificationsChannel) *NotificationsService {
+	return &NotificationsService{notificationChannelUseCase: notificationChannelUseCase}
 }
 
-func (n *NotificationsUseCase) Run(ctx context.Context) {
+func (n *NotificationsService) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 	wg.Add(len(n.notificationChannelUseCase))
 

@@ -7,8 +7,8 @@ import (
 	dead_notifications_processor "evrone_course_final/internal/dead-notifications-processor"
 	notifications_observer "evrone_course_final/internal/notifications-observer"
 	notifications_processor "evrone_course_final/internal/notifications-processor"
+	"evrone_course_final/internal/service"
 	"evrone_course_final/internal/tools"
-	"evrone_course_final/internal/usecase"
 	ws_notifications_receivers "evrone_course_final/internal/ws-notifications-receivers"
 	"fmt"
 	"log/slog"
@@ -56,18 +56,18 @@ func Run(ctx context.Context, cfg *config.Config) error {
 
 	processorWs := notifications_processor.NewRedisWSNotificationsProcessor(redisClient)
 	deadProcessorWs := dead_notifications_processor.NewKafkaDeadNotificationsProcessor(producer, cfg)
-	notificationsChannelWs := usecase.NewNotificationChannelUseCase(cfg, "WS processor", kafkaObserverWs, processorWs, deadProcessorWs)
+	notificationsChannelWs := service.NewNotificationChannelUseCase(cfg, "WS processor", kafkaObserverWs, processorWs, deadProcessorWs)
 
-	notificationsChannels := []*usecase.NotificationsChannelUseCase{notificationsChannelWs}
-	notificationsUseCase := usecase.NewNotificationsUseCase(notificationsChannels)
-	go notificationsUseCase.Run(ctx)
+	notificationsChannels := []*service.NotificationsChannel{notificationsChannelWs}
+	notificationsService := service.NewNotificationsService(notificationsChannels)
+	go notificationsService.Run(ctx)
 
 	slog.Info("Starting http server...")
 	wsNotificationsReceiver := ws_notifications_receivers.NewRedisWsNotificationsReceiver(redisClient, cfg)
-	wsNotificationsUseCase := usecase.NewWsNotificationsUseCase(wsNotificationsReceiver)
-	wsNotificationsUseCase.Run(ctx)
+	wsNotificationsService := service.NewWsNotificationsService(wsNotificationsReceiver)
+	wsNotificationsService.Run(ctx)
 
-	server := http.NewServer(cfg, wsNotificationsUseCase)
+	server := http.NewServer(cfg, wsNotificationsService)
 	http.Serve(ctx, server, cfg)
 
 	return nil

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"evrone_course_final/config"
 	"evrone_course_final/internal/entity/dto"
-	"evrone_course_final/internal/usecase"
+	"evrone_course_final/internal/service"
 	"log/slog"
 	"net/http"
 
@@ -14,11 +14,11 @@ import (
 
 type Server struct {
 	cfg                    *config.Config
-	wsNotificationsUseCase *usecase.WsNotificationsUseCase
+	wsNotificationsService *service.WsNotificationsService
 	upgrader               *websocket.Upgrader
 }
 
-func NewServer(cfg *config.Config, wsNotificationsUseCase *usecase.WsNotificationsUseCase) *Server {
+func NewServer(cfg *config.Config, wsNotificationsService *service.WsNotificationsService) *Server {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -27,7 +27,7 @@ func NewServer(cfg *config.Config, wsNotificationsUseCase *usecase.WsNotificatio
 			return !cfg.WS.CheckOrigin || origin == cfg.WS.AllowedOrigin
 		},
 	}
-	return &Server{cfg: cfg, wsNotificationsUseCase: wsNotificationsUseCase, upgrader: &upgrader}
+	return &Server{cfg: cfg, wsNotificationsService: wsNotificationsService, upgrader: &upgrader}
 }
 
 func (s *Server) SubscribeNotifications(ctx context.Context) func(http.ResponseWriter, *http.Request) {
@@ -44,7 +44,7 @@ func (s *Server) SubscribeNotifications(ctx context.Context) func(http.ResponseW
 			return
 		}
 
-		s.wsNotificationsUseCase.HandleConnection(ctx, userEmail, ws)
+		s.wsNotificationsService.HandleConnection(ctx, userEmail, ws)
 	}
 }
 

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"evrone_course_final/config"
 	"evrone_course_final/internal/entity"
-	"evrone_course_final/internal/usecase"
+	"evrone_course_final/internal/service"
 	"fmt"
 	"log/slog"
 	"time"
@@ -18,15 +18,15 @@ type KafkaNotificationsObserver struct {
 	topicName  string
 	consumer   sarama.ConsumerGroup
 	cfg        *config.Config
-	subscriber usecase.NotificationsSubscriber
-	terminator usecase.Terminator
+	subscriber service.NotificationsSubscriber
+	terminator service.Terminator
 }
 
 func NewKafkaNotificationsObserver(topicName string, cfg *config.Config, consumer sarama.ConsumerGroup) *KafkaNotificationsObserver {
 	return &KafkaNotificationsObserver{topicName: topicName, cfg: cfg, consumer: consumer}
 }
 
-func (k *KafkaNotificationsObserver) Subscribe(subscriber usecase.NotificationsSubscriber, terminator usecase.Terminator) {
+func (k *KafkaNotificationsObserver) Subscribe(subscriber service.NotificationsSubscriber, terminator service.Terminator) {
 	k.subscriber = subscriber
 	k.terminator = terminator
 }

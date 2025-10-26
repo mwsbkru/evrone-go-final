@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"evrone_course_final/config"
 	"evrone_course_final/internal/entity"
+	"evrone_course_final/internal/service"
 	"evrone_course_final/internal/tools"
-	"evrone_course_final/internal/usecase"
 	"fmt"
 	"log/slog"
 	"time"
@@ -16,8 +16,8 @@ import (
 
 type RedisWsNotificationsReceiver struct {
 	redisClient                   *redis.Client
-	receivedNotificationProcessor usecase.ReceivedNotificationProcessor
-	wsConnectionTerminator        usecase.WsConnectionTerminator
+	receivedNotificationProcessor service.ReceivedNotificationProcessor
+	wsConnectionTerminator        service.WsConnectionTerminator
 	cfg                           *config.Config
 }
 
@@ -25,7 +25,7 @@ func NewRedisWsNotificationsReceiver(redisClient *redis.Client, cfg *config.Conf
 	return &RedisWsNotificationsReceiver{redisClient: redisClient, cfg: cfg}
 }
 
-func (r *RedisWsNotificationsReceiver) Subscribe(receivedNotificationProcessor usecase.ReceivedNotificationProcessor, wsConnectionTerminator usecase.WsConnectionTerminator) {
+func (r *RedisWsNotificationsReceiver) Subscribe(receivedNotificationProcessor service.ReceivedNotificationProcessor, wsConnectionTerminator service.WsConnectionTerminator) {
 	r.receivedNotificationProcessor = receivedNotificationProcessor
 	r.wsConnectionTerminator = wsConnectionTerminator
 }

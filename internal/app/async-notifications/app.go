@@ -6,8 +6,8 @@ import (
 	dead_notifications_processor "evrone_course_final/internal/dead-notifications-processor"
 	notifications_observer "evrone_course_final/internal/notifications-observer"
 	notifications_processor "evrone_course_final/internal/notifications-processor"
+	"evrone_course_final/internal/service"
 	"evrone_course_final/internal/tools"
-	"evrone_course_final/internal/usecase"
 	"fmt"
 	"time"
 
@@ -55,16 +55,16 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	topicEmailNotifications := cfg.Kafka.TopicEmailNotifications
 	kafkaObserverEmail := notifications_observer.NewKafkaNotificationsObserver(topicEmailNotifications, cfg, consumerEmail)
 	processorEmail := notifications_processor.NewEmailNotificationsProcessor(cfg, smtpClient)
-	notificationsChannelEmail := usecase.NewNotificationChannelUseCase(cfg, "Email processor", kafkaObserverEmail, processorEmail, deadProcessor)
+	notificationsChannelEmail := service.NewNotificationChannelUseCase(cfg, "Email processor", kafkaObserverEmail, processorEmail, deadProcessor)
 
 	topicPushNotifications := cfg.Kafka.TopicPushNotifications
 	kafkaObserverPush := notifications_observer.NewKafkaNotificationsObserver(topicPushNotifications, cfg, consumerPush)
 	consoleProcessorPush := notifications_processor.ConsoleNotificationsProcessor{Name: "push"}
-	notificationsChannelPush := usecase.NewNotificationChannelUseCase(cfg, "Push processor", kafkaObserverPush, &consoleProcessorPush, deadProcessor)
+	notificationsChannelPush := service.NewNotificationChannelUseCase(cfg, "Push processor", kafkaObserverPush, &consoleProcessorPush, deadProcessor)
 
-	notificationsChannels := []*usecase.NotificationsChannelUseCase{notificationsChannelEmail, notificationsChannelPush}
-	notificationsUseCase := usecase.NewNotificationsUseCase(notificationsChannels)
-	notificationsUseCase.Run(ctx)
+	notificationsChannels := []*service.NotificationsChannel{notificationsChannelEmail, notificationsChannelPush}
+	notificationsService := service.NewNotificationsService(notificationsChannels)
+	notificationsService.Run(ctx)
 
 	return nil
 }

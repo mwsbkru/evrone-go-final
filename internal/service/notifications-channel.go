@@ -1,4 +1,4 @@
-package usecase
+package service
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-type NotificationsChannelUseCase struct {
+type NotificationsChannel struct {
 	Name                       string
 	wg                         *sync.WaitGroup
 	notificationsObserver      NotificationsObserver
@@ -18,23 +18,23 @@ type NotificationsChannelUseCase struct {
 	cfg                        *config.Config
 }
 
-func NewNotificationChannelUseCase(cfg *config.Config, name string, observer NotificationsObserver, processor NotificationsProcessor, deadProcessor DeadNotificationsProcessor) *NotificationsChannelUseCase {
-	return &NotificationsChannelUseCase{cfg: cfg, Name: name, notificationsObserver: observer, notificationsProcessor: processor, deadNotificationsProcessor: deadProcessor}
+func NewNotificationChannelUseCase(cfg *config.Config, name string, observer NotificationsObserver, processor NotificationsProcessor, deadProcessor DeadNotificationsProcessor) *NotificationsChannel {
+	return &NotificationsChannel{cfg: cfg, Name: name, notificationsObserver: observer, notificationsProcessor: processor, deadNotificationsProcessor: deadProcessor}
 }
 
-func (n *NotificationsChannelUseCase) Run(ctx context.Context, wg *sync.WaitGroup) {
+func (n *NotificationsChannel) Run(ctx context.Context, wg *sync.WaitGroup) {
 	n.wg = wg
 	n.notificationsObserver.Subscribe(n.getSubscriber(ctx), n.terminator)
 	n.notificationsObserver.StartListening(ctx)
 }
 
-func (n *NotificationsChannelUseCase) getSubscriber(ctx context.Context) NotificationsSubscriber {
+func (n *NotificationsChannel) getSubscriber(ctx context.Context) NotificationsSubscriber {
 	return func(notification *entity.Notification) {
 		go n.process(ctx, notification)
 	}
 }
 
-func (n *NotificationsChannelUseCase) process(ctx context.Context, notification *entity.Notification) {
+func (n *NotificationsChannel) process(ctx context.Context, notification *entity.Notification) {
 	slog.Info("Start process notification", slog.String("process channel", n.Name), slog.Int("Retry number", notification.CurrentRetry))
 	err := n.notificationsProcessor.Process(ctx, notification)
 	if err != nil {
@@ -62,6 +62,6 @@ func (n *NotificationsChannelUseCase) process(ctx context.Context, notification 
 	}
 }
 
-func (n *NotificationsChannelUseCase) terminator() {
+func (n *NotificationsChannel) terminator() {
 	n.wg.Done()
 }
