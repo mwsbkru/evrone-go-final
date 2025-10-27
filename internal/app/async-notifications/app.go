@@ -2,14 +2,15 @@ package async_notifications
 
 import (
 	"context"
-	"evrone_course_final/config"
-	dead_notifications_processor "evrone_course_final/internal/dead-notifications-processor"
-	notifications_observer "evrone_course_final/internal/notifications-observer"
-	notifications_processor "evrone_course_final/internal/notifications-processor"
-	"evrone_course_final/internal/service"
-	"evrone_course_final/internal/tools"
 	"fmt"
 	"time"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	dead_notifications_processor "github.com/mwsbkru/evrone-go-final/internal/dead-notifications-processor"
+	notifications_observer "github.com/mwsbkru/evrone-go-final/internal/notifications-observer"
+	notifications_processor "github.com/mwsbkru/evrone-go-final/internal/notifications-processor"
+	"github.com/mwsbkru/evrone-go-final/internal/service"
+	"github.com/mwsbkru/evrone-go-final/internal/tools"
 
 	"github.com/IBM/sarama"
 	mail "github.com/xhit/go-simple-mail/v2"

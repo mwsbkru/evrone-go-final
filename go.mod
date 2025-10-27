@@ -1,4 +1,4 @@
-module evrone_course_final
+module github.com/mwsbkru/evrone-go-final
 
 go 1.25.3
 

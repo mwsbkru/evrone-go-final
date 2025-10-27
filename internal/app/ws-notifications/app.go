@@ -2,16 +2,17 @@ package ws_notifications
 
 import (
 	"context"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/controller/http"
-	dead_notifications_processor "evrone_course_final/internal/dead-notifications-processor"
-	notifications_observer "evrone_course_final/internal/notifications-observer"
-	notifications_processor "evrone_course_final/internal/notifications-processor"
-	"evrone_course_final/internal/service"
-	"evrone_course_final/internal/tools"
-	ws_notifications_receivers "evrone_course_final/internal/ws-notifications-receivers"
 	"fmt"
 	"log/slog"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/controller/http"
+	dead_notifications_processor "github.com/mwsbkru/evrone-go-final/internal/dead-notifications-processor"
+	notifications_observer "github.com/mwsbkru/evrone-go-final/internal/notifications-observer"
+	notifications_processor "github.com/mwsbkru/evrone-go-final/internal/notifications-processor"
+	"github.com/mwsbkru/evrone-go-final/internal/service"
+	"github.com/mwsbkru/evrone-go-final/internal/tools"
+	ws_notifications_receivers "github.com/mwsbkru/evrone-go-final/internal/ws-notifications-receivers"
 
 	"github.com/IBM/sarama"
 	"github.com/redis/go-redis/v9"

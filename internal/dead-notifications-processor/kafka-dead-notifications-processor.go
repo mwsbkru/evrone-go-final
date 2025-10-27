@@ -3,10 +3,11 @@ package dead_notifications_processor
 import (
 	"encoding/json"
 	"errors"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity"
 	"fmt"
 	"log/slog"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
 
 	"github.com/IBM/sarama"
 )

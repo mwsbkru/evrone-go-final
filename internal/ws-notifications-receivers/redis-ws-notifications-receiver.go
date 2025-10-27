@@ -3,13 +3,14 @@ package ws_notifications_receivers
 import (
 	"context"
 	"encoding/json"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity"
-	"evrone_course_final/internal/service"
-	"evrone_course_final/internal/tools"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
+	"github.com/mwsbkru/evrone-go-final/internal/service"
+	"github.com/mwsbkru/evrone-go-final/internal/tools"
 
 	"github.com/redis/go-redis/v9"
 )

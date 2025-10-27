@@ -1,10 +1,11 @@
 package tools
 
 import (
-	"evrone_course_final/config"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/mwsbkru/evrone-go-final/config"
 
 	"github.com/IBM/sarama"
 )

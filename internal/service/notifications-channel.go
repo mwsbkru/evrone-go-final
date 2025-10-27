@@ -2,11 +2,12 @@ package service
 
 import (
 	"context"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity"
 	"log/slog"
 	"sync"
 	"time"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
 )
 
 type NotificationsChannel struct {

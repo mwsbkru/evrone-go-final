@@ -2,7 +2,8 @@ package service
 
 import (
 	"context"
-	"evrone_course_final/internal/entity"
+
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
 )
 
 type NotificationsSubscriber func(notification *entity.Notification)

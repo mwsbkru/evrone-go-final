@@ -2,10 +2,11 @@ package notifications_processor
 
 import (
 	"context"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity"
 	"fmt"
 	"log/slog"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
 
 	mail "github.com/xhit/go-simple-mail/v2"
 )

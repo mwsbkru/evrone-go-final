@@ -3,11 +3,12 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity/dto"
-	"evrone_course_final/internal/service"
 	"log/slog"
 	"net/http"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity/dto"
+	"github.com/mwsbkru/evrone-go-final/internal/service"
 
 	websocket "github.com/gorilla/websocket"
 )

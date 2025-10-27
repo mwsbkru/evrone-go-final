@@ -1,8 +1,9 @@
 package dead_notifications_processor
 
 import (
-	"evrone_course_final/internal/entity"
 	"log/slog"
+
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
 )
 
 type ConsoleDeadNotificationsProcessor struct {

@@ -3,12 +3,13 @@ package notifications_observer
 import (
 	"context"
 	"encoding/json"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity"
-	"evrone_course_final/internal/service"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
+	"github.com/mwsbkru/evrone-go-final/internal/service"
 
 	"github.com/IBM/sarama"
 )

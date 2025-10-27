@@ -2,10 +2,11 @@ package http
 
 import (
 	"context"
-	"evrone_course_final/config"
 	"fmt"
 	"log/slog"
 	"net/http"
+
+	"github.com/mwsbkru/evrone-go-final/config"
 )
 
 func Serve(ctx context.Context, server *Server, cfg *config.Config) {

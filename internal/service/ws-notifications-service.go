@@ -2,10 +2,11 @@ package service
 
 import (
 	"context"
-	"evrone_course_final/internal/entity"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
 
 	"github.com/gorilla/websocket"
 )

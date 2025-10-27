@@ -2,14 +2,19 @@ package main
 
 import (
 	"context"
-	"evrone_course_final/config"
-	ws_notifications "evrone_course_final/internal/app/ws-notifications"
 	"log/slog"
+	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	ws_notifications "github.com/mwsbkru/evrone-go-final/internal/app/ws-notifications"
 )
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
+	slog.SetDefault(logger)
+
 	cfg, err := config.NewConfig()
 	if err != nil {
 		slog.Error("Не удалось загрузить конфигурацию приложения", slog.String("error", err.Error()))
