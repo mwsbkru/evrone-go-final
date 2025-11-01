@@ -8,63 +8,38 @@ import (
 	"github.com/mwsbkru/evrone-go-final/config"
 	"github.com/mwsbkru/evrone-go-final/internal/controller/http"
 	dead_notifications_processor "github.com/mwsbkru/evrone-go-final/internal/dead-notifications-processor"
+	"github.com/mwsbkru/evrone-go-final/internal/infrastructure/kafka"
+	"github.com/mwsbkru/evrone-go-final/internal/infrastructure/redis"
 	notifications_observer "github.com/mwsbkru/evrone-go-final/internal/notifications-observer"
 	notifications_processor "github.com/mwsbkru/evrone-go-final/internal/notifications-processor"
 	"github.com/mwsbkru/evrone-go-final/internal/service"
 	"github.com/mwsbkru/evrone-go-final/internal/tools"
 	ws_notifications_receivers "github.com/mwsbkru/evrone-go-final/internal/ws-notifications-receivers"
-
-	"github.com/IBM/sarama"
-	"github.com/redis/go-redis/v9"
 )
 
 func Run(ctx context.Context, cfg *config.Config) error {
-	kafkaClient, err := tools.PrepareKafkaClient(cfg)
+	kafkaClient, err := kafka.NewClient(cfg)
 	if err != nil {
 		return fmt.Errorf("can't init Kafka client: %w", err)
 	}
 	defer kafkaClient.Close()
 
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: cfg.Redis.Addr,
-		DB:   cfg.Redis.DB,
-	})
+	redisClient := redis.NewClient(cfg)
 	defer redisClient.Close()
 
-	consumerWs, err := sarama.NewConsumerGroupFromClient(cfg.Kafka.ConsumerGroupID, kafkaClient)
+	notificationsChannelWs, consumerWs, producer, err := initializeWSNotificationChannel(cfg, kafkaClient, redisClient)
 	if err != nil {
-		return fmt.Errorf("can't init Kafka WebSocket consumer: %w", err)
+		return fmt.Errorf("can't initialize WS notification channel: %w", err)
 	}
 	defer consumerWs.Close()
-
-	err = tools.EnsureTopicExists(cfg.Kafka.TopicDeadNotifications, kafkaClient)
-	if err != nil {
-		return fmt.Errorf("can't prepare topic for dead notifications: %w", err)
-	}
-
-	producerConfig := sarama.NewConfig()
-	producerConfig.Producer.Return.Successes = true
-	producerConfig.Producer.Partitioner = sarama.NewRandomPartitioner
-
-	producer, err := sarama.NewSyncProducer([]string{cfg.Kafka.Brokers}, producerConfig)
-	if err != nil {
-		return fmt.Errorf("can't init Kafka producer: %w", err)
-	}
 	defer producer.Close()
-
-	topicWsNotifications := cfg.Kafka.TopicWSNotifications
-	kafkaObserverWs := notifications_observer.NewKafkaNotificationsObserver(topicWsNotifications, cfg, consumerWs)
-
-	processorWs := notifications_processor.NewRedisWSNotificationsProcessor(redisClient)
-	deadProcessorWs := dead_notifications_processor.NewKafkaDeadNotificationsProcessor(producer, cfg)
-	notificationsChannelWs := service.NewNotificationChannelUseCase(cfg, "WS processor", kafkaObserverWs, processorWs, deadProcessorWs)
 
 	notificationsChannels := []*service.NotificationsChannel{notificationsChannelWs}
 	notificationsService := service.NewNotificationsService(notificationsChannels)
 	go notificationsService.Run(ctx)
 
 	slog.Info("Starting http server...")
-	wsNotificationsReceiver := ws_notifications_receivers.NewRedisWsNotificationsReceiver(redisClient, cfg)
+	wsNotificationsReceiver := ws_notifications_receivers.NewRedisWsNotificationsReceiver(redisClient.GetClient(), cfg)
 	wsNotificationsService := service.NewWsNotificationsService(wsNotificationsReceiver)
 	wsNotificationsService.Run(ctx)
 
@@ -72,4 +47,34 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	http.Serve(ctx, server, cfg)
 
 	return nil
+}
+
+// initializeWSNotificationChannel creates and initializes a WebSocket notification channel
+func initializeWSNotificationChannel(
+	cfg *config.Config,
+	kafkaClient *kafka.Client,
+	redisClient *redis.Client,
+) (*service.NotificationsChannel, *kafka.Consumer, *kafka.Producer, error) {
+	consumerWs, err := kafka.NewConsumer(cfg.Kafka.ConsumerGroupID, kafkaClient.GetClient())
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("can't init Kafka WebSocket consumer: %w", err)
+	}
+
+	err = tools.EnsureTopicExists(cfg.Kafka.TopicDeadNotifications, kafkaClient.GetClient())
+	if err != nil {
+		return nil, nil, nil, fmt.Errorf("can't prepare topic for dead notifications: %w", err)
+	}
+
+	producer, err := kafka.NewProducer([]string{cfg.Kafka.Brokers})
+	if err != nil {
+		consumerWs.Close()
+		return nil, nil, nil, fmt.Errorf("can't init Kafka producer: %w", err)
+	}
+
+	topicWsNotifications := cfg.Kafka.TopicWSNotifications
+	kafkaObserverWs := notifications_observer.NewKafkaNotificationsObserver(topicWsNotifications, cfg, consumerWs.GetConsumer())
+	processorWs := notifications_processor.NewRedisWSNotificationsProcessor(redisClient.GetClient())
+	deadProcessorWs := dead_notifications_processor.NewKafkaDeadNotificationsProcessor(producer.GetProducer(), cfg)
+	channel := service.NewNotificationChannelUseCase(cfg, "WS processor", kafkaObserverWs, processorWs, deadProcessorWs)
+	return channel, consumerWs, producer, nil
 }
