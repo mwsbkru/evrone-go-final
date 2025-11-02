@@ -3,21 +3,22 @@ package ws_notifications_receivers
 import (
 	"context"
 	"encoding/json"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity"
-	"evrone_course_final/internal/tools"
-	"evrone_course_final/internal/usecase"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
+	"github.com/mwsbkru/evrone-go-final/internal/service"
+	"github.com/mwsbkru/evrone-go-final/internal/tools"
 
 	"github.com/redis/go-redis/v9"
 )
 
 type RedisWsNotificationsReceiver struct {
 	redisClient                   *redis.Client
-	receivedNotificationProcessor usecase.ReceivedNotificationProcessor
-	wsConnectionTerminator        usecase.WsConnectionTerminator
+	receivedNotificationProcessor service.ReceivedNotificationProcessor
+	wsConnectionTerminator        service.WsConnectionTerminator
 	cfg                           *config.Config
 }
 
@@ -25,7 +26,7 @@ func NewRedisWsNotificationsReceiver(redisClient *redis.Client, cfg *config.Conf
 	return &RedisWsNotificationsReceiver{redisClient: redisClient, cfg: cfg}
 }
 
-func (r *RedisWsNotificationsReceiver) Subscribe(receivedNotificationProcessor usecase.ReceivedNotificationProcessor, wsConnectionTerminator usecase.WsConnectionTerminator) {
+func (r *RedisWsNotificationsReceiver) Subscribe(receivedNotificationProcessor service.ReceivedNotificationProcessor, wsConnectionTerminator service.WsConnectionTerminator) {
 	r.receivedNotificationProcessor = receivedNotificationProcessor
 	r.wsConnectionTerminator = wsConnectionTerminator
 }
@@ -57,7 +58,7 @@ func (r *RedisWsNotificationsReceiver) readNotifications(ctx context.Context, us
 	entries, err := r.redisClient.XRead(ctx,
 		&redis.XReadArgs{
 			Streams: []string{tools.GetUserStreamName(userEmail), lastID},
-			Block:   time.Duration(r.cfg.RedisTimeoutSeconds) * time.Second,
+			Block:   time.Duration(r.cfg.Redis.TimeoutSeconds) * time.Second,
 		}).Result()
 	if err != nil {
 		// Check if error is caused by Block option timeout

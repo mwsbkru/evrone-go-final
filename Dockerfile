@@ -1,5 +1,5 @@
 # Базовый образ
-FROM golang:1.24-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 # Установка зависимостей
 RUN apk update && apk add --no-cache git
@@ -8,13 +8,14 @@ RUN apk update && apk add --no-cache git
 WORKDIR /app
 COPY . .
 
-# Установка зависимостей проекта
-RUN go mod download
+ENV GOPROXY=direct
+ENV GOCACHE=/go-cache
+ENV GOMODCACHE=/gomod-cache
 
 ARG APP_SUBDIR
 
-# Сборка бинарника
-RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/${APP_SUBDIR}/main.go
+# Сборка бинарника старая версия с go mod download смотри в истории git
+RUN --mount=type=cache,target=/gomod-cache --mount=type=cache,target=/go-cache CGO_ENABLED=0 GOOS=linux go build -o main ./cmd/${APP_SUBDIR}/main.go
 
 # Финальный образ
 FROM alpine:latest

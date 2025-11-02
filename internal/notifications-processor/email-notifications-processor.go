@@ -2,10 +2,11 @@ package notifications_processor
 
 import (
 	"context"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity"
 	"fmt"
 	"log/slog"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
 
 	mail "github.com/xhit/go-simple-mail/v2"
 )
@@ -24,7 +25,7 @@ func NewEmailNotificationsProcessor(cfg *config.Config, smtpClient *mail.SMTPCli
 
 func (e *EmailNotificationsProcessor) Process(ctx context.Context, notification *entity.Notification) error {
 	email := mail.NewMSG()
-	email.SetFrom(fmt.Sprintf("From Example <%s>", e.cfg.FromEmail)).
+	email.SetFrom(fmt.Sprintf("From Example <%s>", e.cfg.Email.FromEmail)).
 		AddTo(notification.UserEmail).
 		SetSubject(notification.Subject)
 
