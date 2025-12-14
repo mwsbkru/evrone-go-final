@@ -3,8 +3,9 @@ package notifications_processor
 import (
 	"context"
 	"errors"
-	"evrone_course_final/internal/entity"
 	"log/slog"
+
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
 )
 
 type ConsoleNotificationsProcessor struct {

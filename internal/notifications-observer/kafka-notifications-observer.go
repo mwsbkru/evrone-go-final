@@ -3,12 +3,13 @@ package notifications_observer
 import (
 	"context"
 	"encoding/json"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity"
-	"evrone_course_final/internal/usecase"
 	"fmt"
 	"log/slog"
 	"time"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
+	"github.com/mwsbkru/evrone-go-final/internal/service"
 
 	"github.com/IBM/sarama"
 )
@@ -18,15 +19,15 @@ type KafkaNotificationsObserver struct {
 	topicName  string
 	consumer   sarama.ConsumerGroup
 	cfg        *config.Config
-	subscriber usecase.NotificationsSubscriber
-	terminator usecase.Terminator
+	subscriber service.NotificationsSubscriber
+	terminator service.Terminator
 }
 
 func NewKafkaNotificationsObserver(topicName string, cfg *config.Config, consumer sarama.ConsumerGroup) *KafkaNotificationsObserver {
 	return &KafkaNotificationsObserver{topicName: topicName, cfg: cfg, consumer: consumer}
 }
 
-func (k *KafkaNotificationsObserver) Subscribe(subscriber usecase.NotificationsSubscriber, terminator usecase.Terminator) {
+func (k *KafkaNotificationsObserver) Subscribe(subscriber service.NotificationsSubscriber, terminator service.Terminator) {
 	k.subscriber = subscriber
 	k.terminator = terminator
 }
@@ -44,8 +45,8 @@ func (k *KafkaNotificationsObserver) StartListening(ctx context.Context) {
 			slog.Info("Terminating Kafka observer")
 			k.terminator()
 			return
-		case <-time.After(time.Duration(k.cfg.KafkaTimeoutSeconds) * time.Second):
-			slog.Info(fmt.Sprintf("Listening topic %s timeout %d", k.topicName, k.cfg.KafkaTimeoutSeconds))
+		case <-time.After(time.Duration(k.cfg.Kafka.TimeoutSeconds) * time.Second):
+			slog.Info(fmt.Sprintf("Listening topic %s timeout %d", k.topicName, k.cfg.Kafka.TimeoutSeconds))
 		}
 	}
 }

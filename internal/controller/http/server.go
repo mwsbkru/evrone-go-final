@@ -3,31 +3,32 @@ package http
 import (
 	"context"
 	"encoding/json"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity/dto"
-	"evrone_course_final/internal/usecase"
 	"log/slog"
 	"net/http"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity/dto"
+	"github.com/mwsbkru/evrone-go-final/internal/service"
 
 	websocket "github.com/gorilla/websocket"
 )
 
 type Server struct {
 	cfg                    *config.Config
-	wsNotificationsUseCase *usecase.WsNotificationsUseCase
+	wsNotificationsService *service.WsNotificationsService
 	upgrader               *websocket.Upgrader
 }
 
-func NewServer(cfg *config.Config, wsNotificationsUseCase *usecase.WsNotificationsUseCase) *Server {
+func NewServer(cfg *config.Config, wsNotificationsService *service.WsNotificationsService) *Server {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin: func(r *http.Request) bool {
 			origin := r.Header.Get("Origin")
-			return !cfg.WsCheckOrigin || origin == cfg.WsAllowedOrigin
+			return !cfg.WS.CheckOrigin || origin == cfg.WS.AllowedOrigin
 		},
 	}
-	return &Server{cfg: cfg, wsNotificationsUseCase: wsNotificationsUseCase, upgrader: &upgrader}
+	return &Server{cfg: cfg, wsNotificationsService: wsNotificationsService, upgrader: &upgrader}
 }
 
 func (s *Server) SubscribeNotifications(ctx context.Context) func(http.ResponseWriter, *http.Request) {
@@ -44,7 +45,7 @@ func (s *Server) SubscribeNotifications(ctx context.Context) func(http.ResponseW
 			return
 		}
 
-		s.wsNotificationsUseCase.HandleConnection(ctx, userEmail, ws)
+		s.wsNotificationsService.HandleConnection(ctx, userEmail, ws)
 	}
 }
 

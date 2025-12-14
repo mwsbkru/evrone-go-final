@@ -3,10 +3,11 @@ package dead_notifications_processor
 import (
 	"encoding/json"
 	"errors"
-	"evrone_course_final/config"
-	"evrone_course_final/internal/entity"
 	"fmt"
 	"log/slog"
+
+	"github.com/mwsbkru/evrone-go-final/config"
+	"github.com/mwsbkru/evrone-go-final/internal/entity"
 
 	"github.com/IBM/sarama"
 )
@@ -43,7 +44,7 @@ func (k *KafkaDeadNotificationsProcessor) Process(notification *entity.Notificat
 
 	// Создаем сообщение для Kafka
 	msg := &sarama.ProducerMessage{
-		Topic: k.cfg.KafkaTopicDeadNotifications, // имя топика Kafka
+		Topic: k.cfg.Kafka.TopicDeadNotifications, // имя топика Kafka
 		Value: sarama.StringEncoder(payloadJSON),
 	}
 
