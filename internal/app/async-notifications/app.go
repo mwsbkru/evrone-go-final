@@ -68,7 +68,7 @@ func initializeEmailNotificationChannel(
 	topicEmailNotifications := cfg.Kafka.TopicEmailNotifications
 	kafkaObserverEmail := notifications_observer.NewKafkaNotificationsObserver(topicEmailNotifications, cfg, consumerEmail.GetConsumer())
 	processorEmail := notifications_processor.NewEmailNotificationsProcessor(cfg, smtpClient.GetClient())
-	channel := service.NewNotificationChannelUseCase(cfg, "Email processor", kafkaObserverEmail, processorEmail, deadProcessor)
+	channel := service.NewNotificationChannel(cfg, "Email processor", kafkaObserverEmail, processorEmail, deadProcessor)
 	return channel, consumerEmail, nil
 }
 
@@ -86,6 +86,6 @@ func initializePushNotificationChannel(
 	topicPushNotifications := cfg.Kafka.TopicPushNotifications
 	kafkaObserverPush := notifications_observer.NewKafkaNotificationsObserver(topicPushNotifications, cfg, consumerPush.GetConsumer())
 	consoleProcessorPush := notifications_processor.ConsoleNotificationsProcessor{Name: "push"}
-	channel := service.NewNotificationChannelUseCase(cfg, "Push processor", kafkaObserverPush, &consoleProcessorPush, deadProcessor)
+	channel := service.NewNotificationChannel(cfg, "Push processor", kafkaObserverPush, &consoleProcessorPush, deadProcessor)
 	return channel, consumerPush, nil
 }

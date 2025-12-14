@@ -75,6 +75,6 @@ func initializeWSNotificationChannel(
 	kafkaObserverWs := notifications_observer.NewKafkaNotificationsObserver(topicWsNotifications, cfg, consumerWs.GetConsumer())
 	processorWs := notifications_processor.NewRedisWSNotificationsProcessor(redisClient.GetClient())
 	deadProcessorWs := dead_notifications_processor.NewKafkaDeadNotificationsProcessor(producer.GetProducer(), cfg)
-	channel := service.NewNotificationChannelUseCase(cfg, "WS processor", kafkaObserverWs, processorWs, deadProcessorWs)
+	channel := service.NewNotificationChannel(cfg, "WS processor", kafkaObserverWs, processorWs, deadProcessorWs)
 	return channel, consumerWs, producer, nil
 }

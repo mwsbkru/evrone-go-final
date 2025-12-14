@@ -1,4 +1,6 @@
 docker compose build && docker compose up
+clear && GOEXPERIMENT=synctest go test ./...
+
 
 {
 "user_email": "w1@rty.ru",

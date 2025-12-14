@@ -19,7 +19,7 @@ type NotificationsChannel struct {
 	cfg                        *config.Config
 }
 
-func NewNotificationChannelUseCase(cfg *config.Config, name string, observer NotificationsObserver, processor NotificationsProcessor, deadProcessor DeadNotificationsProcessor) *NotificationsChannel {
+func NewNotificationChannel(cfg *config.Config, name string, observer NotificationsObserver, processor NotificationsProcessor, deadProcessor DeadNotificationsProcessor) *NotificationsChannel {
 	return &NotificationsChannel{cfg: cfg, Name: name, notificationsObserver: observer, notificationsProcessor: processor, deadNotificationsProcessor: deadProcessor}
 }
 

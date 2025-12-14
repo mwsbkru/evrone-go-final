@@ -8,21 +8,21 @@ import (
 )
 
 type NotificationsService struct {
-	notificationChannelUseCase []*NotificationsChannel
+	notificationChannel []*NotificationsChannel
 }
 
-func NewNotificationsService(notificationChannelUseCase []*NotificationsChannel) *NotificationsService {
-	return &NotificationsService{notificationChannelUseCase: notificationChannelUseCase}
+func NewNotificationsService(notificationChannel []*NotificationsChannel) *NotificationsService {
+	return &NotificationsService{notificationChannel: notificationChannel}
 }
 
 func (n *NotificationsService) Run(ctx context.Context) {
 	var wg sync.WaitGroup
-	wg.Add(len(n.notificationChannelUseCase))
+	wg.Add(len(n.notificationChannel))
 
 	slog.Info("Start notifications processing")
-	for _, notificationChannelUseCase := range n.notificationChannelUseCase {
-		slog.Info(fmt.Sprintf("Start notifications channel: %s", notificationChannelUseCase.Name))
-		go notificationChannelUseCase.Run(ctx, &wg)
+	for _, notificationChannel := range n.notificationChannel {
+		slog.Info(fmt.Sprintf("Start notifications channel: %s", notificationChannel.Name))
+		go notificationChannel.Run(ctx, &wg)
 	}
 
 	slog.Info("Started notifications processing")
