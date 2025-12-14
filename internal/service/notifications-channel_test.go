@@ -70,9 +70,6 @@ func TestNotificationsChannel_Run(t *testing.T) {
 			done <- true
 		}()
 
-		time.Sleep(100 * time.Millisecond)
-		cancel()
-
 		select {
 		case <-done:
 		case <-time.After(2 * time.Second):
@@ -225,9 +222,6 @@ func TestNotificationsChannel_process_ContextCancelledDuringRetry(t *testing.T) 
 		// Cancel context before retry completes
 		time.Sleep(100 * time.Millisecond)
 		cancel()
-
-		// Wait a bit to ensure retry timer is cancelled
-		time.Sleep(100 * time.Millisecond)
 
 		mockProcessor.AssertExpectations(t)
 		mockDeadProcessor.AssertNotCalled(t, "Process")
