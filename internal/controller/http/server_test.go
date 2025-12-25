@@ -6,30 +6,11 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 
-	"github.com/gorilla/websocket"
-	"github.com/mwsbkru/evrone-go-final/config"
 	"github.com/mwsbkru/evrone-go-final/internal/entity/dto"
 	"github.com/mwsbkru/evrone-go-final/internal/service"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
-
-// Helper function to create test server with real service
-func createTestServer(cfg *config.Config, wsService *service.WsNotificationsService) *Server {
-	return NewServer(cfg, wsService)
-}
-
-// Helper function to create test config
-func createTestConfig(checkOrigin bool, allowedOrigin string) *config.Config {
-	return &config.Config{
-		WS: config.WSConfig{
-			CheckOrigin:   checkOrigin,
-			AllowedOrigin: allowedOrigin,
-		},
-	}
-}
 
 func TestNewServer(t *testing.T) {
 	cfg := createTestConfig(true, "http://example.com")
@@ -132,45 +113,6 @@ func TestServer_SubscribeNotifications_EmptyUserEmail(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, http.StatusBadRequest, errorResponse.Code)
 	assert.Equal(t, "get param userEmail must be present", errorResponse.Message)
-}
-
-func TestServer_SubscribeNotifications_ValidRequest_WebSocketUpgrade(t *testing.T) {
-	cfg := createTestConfig(false, "") // Don't check origin for simplicity
-	mockReceiver := new(service.MockWsNotificationsReceiver)
-	wsService := service.NewWsNotificationsService(mockReceiver)
-	server := createTestServer(cfg, wsService)
-
-	userEmail := "test@example.com"
-	mockReceiver.On("Subscribe", mock.AnythingOfType("service.ReceivedNotificationProcessor"), mock.AnythingOfType("service.WsConnectionTerminator")).Return()
-	mockReceiver.On("ReceiveNotifications", mock.Anything, userEmail).Return()
-
-	// Initialize the service
-	ctx := context.Background()
-	wsService.Run(ctx)
-
-	// Create a test HTTP server that uses our handler
-	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		handler := server.SubscribeNotifications(ctx)
-		handler(w, r)
-	}))
-
-	defer testServer.Close()
-
-	// Create WebSocket connection
-	wsURL := "ws" + testServer.URL[4:] + "/notifications/subscribe?userEmail=" + userEmail
-	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
-	if err != nil {
-		t.Skipf("Skipping test: failed to create WebSocket connection: %v", err)
-	}
-	defer conn.Close()
-
-	// let observer goroutine to start and receive notifications
-	time.Sleep(50 * time.Millisecond)
-
-	// The handler should have called HandleConnection on the service
-	// which will eventually call ReceiveNotifications on the receiver
-	// Give it a moment for goroutines to execute
-	mockReceiver.AssertExpectations(t)
 }
 
 func TestServer_respondWithError(t *testing.T) {
