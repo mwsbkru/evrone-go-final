@@ -28,91 +28,92 @@ func TestNewServer(t *testing.T) {
 	assert.NotNil(t, server.upgrader.CheckOrigin)
 }
 
-func TestNewServer_CheckOrigin_WhenCheckOriginFalse(t *testing.T) {
-	cfg := createTestConfig(false, "http://example.com")
-	mockReceiver := new(service.MockWsNotificationsReceiver)
-	wsService := service.NewWsNotificationsService(mockReceiver)
+func TestNewServer_GetCheckOrigin(t *testing.T) {
+	tests := []struct {
+		name          string
+		checkOrigin   bool
+		allowedOrigin string
+		requestOrigin string
+		expected      bool
+	}{
+		{
+			name:          "WhenCheckOriginFalse",
+			checkOrigin:   false,
+			allowedOrigin: "http://example.com",
+			requestOrigin: "http://malicious.com",
+			expected:      true,
+		},
+		{
+			name:          "WhenCheckOriginTrue_AllowedOrigin",
+			checkOrigin:   true,
+			allowedOrigin: "http://example.com",
+			requestOrigin: "http://example.com",
+			expected:      true,
+		},
+		{
+			name:          "WhenCheckOriginTrue_DisallowedOrigin",
+			checkOrigin:   true,
+			allowedOrigin: "http://example.com",
+			requestOrigin: "http://malicious.com",
+			expected:      false,
+		},
+	}
 
-	server := NewServer(cfg, wsService)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := createTestConfig(tt.checkOrigin, tt.allowedOrigin)
+			checkOrigin := getCheckOrigin(cfg)
 
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("Origin", "http://malicious.com")
+			req := httptest.NewRequest(http.MethodGet, "/test", nil)
+			req.Header.Set("Origin", tt.requestOrigin)
 
-	// When CheckOrigin is false, should allow any origin
-	result := server.upgrader.CheckOrigin(req)
-	assert.True(t, result)
+			result := checkOrigin(req)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
 }
 
-func TestNewServer_CheckOrigin_WhenCheckOriginTrue_AllowedOrigin(t *testing.T) {
-	cfg := createTestConfig(true, "http://example.com")
-	mockReceiver := new(service.MockWsNotificationsReceiver)
-	wsService := service.NewWsNotificationsService(mockReceiver)
-
-	server := NewServer(cfg, wsService)
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("Origin", "http://example.com")
-
-	result := server.upgrader.CheckOrigin(req)
-	assert.True(t, result)
-}
-
-func TestNewServer_CheckOrigin_WhenCheckOriginTrue_DisallowedOrigin(t *testing.T) {
-	cfg := createTestConfig(true, "http://example.com")
-	mockReceiver := new(service.MockWsNotificationsReceiver)
-	wsService := service.NewWsNotificationsService(mockReceiver)
-
-	server := NewServer(cfg, wsService)
-
-	req := httptest.NewRequest(http.MethodGet, "/test", nil)
-	req.Header.Set("Origin", "http://malicious.com")
-
-	result := server.upgrader.CheckOrigin(req)
-	assert.False(t, result)
-}
-
-func TestServer_SubscribeNotifications_MissingUserEmail(t *testing.T) {
-	cfg := createTestConfig(true, "http://example.com")
-	mockReceiver := new(service.MockWsNotificationsReceiver)
-	wsService := service.NewWsNotificationsService(mockReceiver)
-	server := createTestServer(cfg, wsService)
-
-	req := httptest.NewRequest(http.MethodGet, "/notifications/subscribe", nil)
-	rec := httptest.NewRecorder()
-
-	ctx := context.Background()
-	handler := server.SubscribeNotifications(ctx)
-	handler(rec, req)
-
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
-
-	var errorResponse dto.ErrorResponse
-	err := json.Unmarshal(rec.Body.Bytes(), &errorResponse)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusBadRequest, errorResponse.Code)
-	assert.Equal(t, "get param userEmail must be present", errorResponse.Message)
-}
-
-func TestServer_SubscribeNotifications_EmptyUserEmail(t *testing.T) {
+func TestServer_SubscribeNotifications_InvalidUserEmail(t *testing.T) {
 	cfg := createTestConfig(true, "http://example.com")
 	mockReceiver := new(service.MockWsNotificationsReceiver)
 	wsService := service.NewWsNotificationsService(mockReceiver)
 	server := createTestServer(cfg, wsService)
 
-	req := httptest.NewRequest(http.MethodGet, "/notifications/subscribe?userEmail=", nil)
-	rec := httptest.NewRecorder()
+	tests := []struct {
+		name    string
+		url     string
+		message string
+	}{
+		{
+			name:    "Missing userEmail parameter",
+			url:     "/notifications/subscribe",
+			message: "get param userEmail must be present",
+		},
+		{
+			name:    "Empty userEmail parameter",
+			url:     "/notifications/subscribe?userEmail=",
+			message: "get param userEmail must be present",
+		},
+	}
 
-	ctx := context.Background()
-	handler := server.SubscribeNotifications(ctx)
-	handler(rec, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.url, nil)
+			rec := httptest.NewRecorder()
 
-	assert.Equal(t, http.StatusBadRequest, rec.Code)
+			ctx := context.Background()
+			handler := server.SubscribeNotifications(ctx)
+			handler(rec, req)
 
-	var errorResponse dto.ErrorResponse
-	err := json.Unmarshal(rec.Body.Bytes(), &errorResponse)
-	assert.NoError(t, err)
-	assert.Equal(t, http.StatusBadRequest, errorResponse.Code)
-	assert.Equal(t, "get param userEmail must be present", errorResponse.Message)
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+			var errorResponse dto.ErrorResponse
+			err := json.Unmarshal(rec.Body.Bytes(), &errorResponse)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, errorResponse.Code)
+			assert.Equal(t, tt.message, errorResponse.Message)
+		})
+	}
 }
 
 func TestServer_respondWithError(t *testing.T) {
