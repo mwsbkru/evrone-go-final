@@ -14,11 +14,6 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func (m *MockDeadNotificationsProcessor) Process(notification *entity.Notification, err error) error {
-	args := m.Called(notification, err)
-	return args.Error(0)
-}
-
 func TestNewNotificationChannel(t *testing.T) {
 	cfg := &config.Config{
 		NotificationsRetryCount:           3,
