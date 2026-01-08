@@ -35,6 +35,11 @@ type MockDeadNotificationsProcessor struct {
 	mock.Mock
 }
 
+func (m *MockDeadNotificationsProcessor) Process(notification *entity.Notification, err error) error {
+	args := m.Called(notification, err)
+	return args.Error(0)
+}
+
 // MockWsNotificationsReceiver is a mock implementation of WsNotificationsReceiver
 type MockWsNotificationsReceiver struct {
 	mock.Mock

@@ -23,10 +23,7 @@ func NewServer(cfg *config.Config, wsNotificationsService *service.WsNotificatio
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
-		CheckOrigin: func(r *http.Request) bool {
-			origin := r.Header.Get("Origin")
-			return !cfg.WS.CheckOrigin || origin == cfg.WS.AllowedOrigin
-		},
+		CheckOrigin:     getCheckOrigin(cfg),
 	}
 	return &Server{cfg: cfg, wsNotificationsService: wsNotificationsService, upgrader: &upgrader}
 }
@@ -63,4 +60,11 @@ func (s *Server) respondWithError(writer http.ResponseWriter, code int, message 
 	}
 	writer.WriteHeader(code)
 	writer.Write(responseBody)
+}
+
+func getCheckOrigin(cfg *config.Config) func(r *http.Request) bool {
+	return func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+		return !cfg.WS.CheckOrigin || origin == cfg.WS.AllowedOrigin
+	}
 }
