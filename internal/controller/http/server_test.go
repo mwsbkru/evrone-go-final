@@ -3,32 +3,31 @@ package http
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/mwsbkru/evrone-go-final/internal/entity/dto"
-	"github.com/mwsbkru/evrone-go-final/internal/service"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+
+	websocket "github.com/gorilla/websocket"
 )
 
 func TestNewServer(t *testing.T) {
 	cfg := createTestConfig(true, "http://example.com")
-	mockReceiver := new(service.MockWsNotificationsReceiver)
-	wsService := service.NewWsNotificationsService(mockReceiver)
+	mockService := new(MockWsNotificationsService)
 
-	server := NewServer(cfg, wsService)
+	server := NewServer(cfg, mockService)
 
 	assert.NotNil(t, server)
 	assert.Equal(t, cfg, server.cfg)
-	assert.Equal(t, wsService, server.wsNotificationsService)
+	assert.Equal(t, mockService, server.wsNotificationsService)
 	assert.NotNil(t, server.upgrader)
-	assert.Equal(t, 1024, server.upgrader.ReadBufferSize)
-	assert.Equal(t, 1024, server.upgrader.WriteBufferSize)
-	assert.NotNil(t, server.upgrader.CheckOrigin)
 }
 
-func TestNewServer_GetCheckOrigin(t *testing.T) {
+func TestGetCheckOrigin(t *testing.T) {
 	tests := []struct {
 		name          string
 		checkOrigin   bool
@@ -37,24 +36,38 @@ func TestNewServer_GetCheckOrigin(t *testing.T) {
 		expected      bool
 	}{
 		{
-			name:          "WhenCheckOriginFalse",
+			name:          "CheckOrigin disabled - allows any origin",
 			checkOrigin:   false,
 			allowedOrigin: "http://example.com",
 			requestOrigin: "http://malicious.com",
 			expected:      true,
 		},
 		{
-			name:          "WhenCheckOriginTrue_AllowedOrigin",
+			name:          "CheckOrigin enabled - allowed origin",
 			checkOrigin:   true,
 			allowedOrigin: "http://example.com",
 			requestOrigin: "http://example.com",
 			expected:      true,
 		},
 		{
-			name:          "WhenCheckOriginTrue_DisallowedOrigin",
+			name:          "CheckOrigin enabled - disallowed origin",
 			checkOrigin:   true,
 			allowedOrigin: "http://example.com",
 			requestOrigin: "http://malicious.com",
+			expected:      false,
+		},
+		{
+			name:          "CheckOrigin enabled - no origin header",
+			checkOrigin:   true,
+			allowedOrigin: "http://example.com",
+			requestOrigin: "",
+			expected:      false,
+		},
+		{
+			name:          "CheckOrigin enabled - empty allowed origin",
+			checkOrigin:   true,
+			allowedOrigin: "",
+			requestOrigin: "http://example.com",
 			expected:      false,
 		},
 	}
@@ -65,7 +78,9 @@ func TestNewServer_GetCheckOrigin(t *testing.T) {
 			checkOrigin := getCheckOrigin(cfg)
 
 			req := httptest.NewRequest(http.MethodGet, "/test", nil)
-			req.Header.Set("Origin", tt.requestOrigin)
+			if tt.requestOrigin != "" {
+				req.Header.Set("Origin", tt.requestOrigin)
+			}
 
 			result := checkOrigin(req)
 			assert.Equal(t, tt.expected, result)
@@ -73,54 +88,10 @@ func TestNewServer_GetCheckOrigin(t *testing.T) {
 	}
 }
 
-func TestServer_SubscribeNotifications_InvalidUserEmail(t *testing.T) {
-	cfg := createTestConfig(true, "http://example.com")
-	mockReceiver := new(service.MockWsNotificationsReceiver)
-	wsService := service.NewWsNotificationsService(mockReceiver)
-	server := createTestServer(cfg, wsService)
-
-	tests := []struct {
-		name    string
-		url     string
-		message string
-	}{
-		{
-			name:    "Missing userEmail parameter",
-			url:     "/notifications/subscribe",
-			message: "get param userEmail must be present",
-		},
-		{
-			name:    "Empty userEmail parameter",
-			url:     "/notifications/subscribe?userEmail=",
-			message: "get param userEmail must be present",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tt.url, nil)
-			rec := httptest.NewRecorder()
-
-			ctx := context.Background()
-			handler := server.SubscribeNotifications(ctx)
-			handler(rec, req)
-
-			assert.Equal(t, http.StatusBadRequest, rec.Code)
-
-			var errorResponse dto.ErrorResponse
-			err := json.Unmarshal(rec.Body.Bytes(), &errorResponse)
-			assert.NoError(t, err)
-			assert.Equal(t, http.StatusBadRequest, errorResponse.Code)
-			assert.Equal(t, tt.message, errorResponse.Message)
-		})
-	}
-}
-
 func TestServer_respondWithError(t *testing.T) {
 	cfg := createTestConfig(true, "http://example.com")
-	mockReceiver := new(service.MockWsNotificationsReceiver)
-	wsService := service.NewWsNotificationsService(mockReceiver)
-	server := createTestServer(cfg, wsService)
+	mockService := new(MockWsNotificationsService)
+	server := createTestServer(cfg, mockService)
 
 	tests := []struct {
 		name         string
@@ -176,4 +147,99 @@ func TestServer_respondWithError(t *testing.T) {
 			assert.Equal(t, tt.expectedBody.Message, errorResponse.Message)
 		})
 	}
+}
+
+func TestServer_SubscribeNotifications_MissingUserEmail(t *testing.T) {
+	cfg := createTestConfig(true, "http://example.com")
+	mockService := new(MockWsNotificationsService)
+	server := createTestServer(cfg, mockService)
+
+	tests := []struct {
+		name    string
+		url     string
+		message string
+	}{
+		{
+			name:    "Missing userEmail parameter",
+			url:     "/notifications/subscribe",
+			message: "get param userEmail must be present",
+		},
+		{
+			name:    "Empty userEmail parameter",
+			url:     "/notifications/subscribe?userEmail=",
+			message: "get param userEmail must be present",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req := httptest.NewRequest(http.MethodGet, tt.url, nil)
+			rec := httptest.NewRecorder()
+
+			ctx := context.Background()
+			handler := server.SubscribeNotifications(ctx)
+			handler(rec, req)
+
+			assert.Equal(t, http.StatusBadRequest, rec.Code)
+
+			var errorResponse dto.ErrorResponse
+			err := json.Unmarshal(rec.Body.Bytes(), &errorResponse)
+			assert.NoError(t, err)
+			assert.Equal(t, http.StatusBadRequest, errorResponse.Code)
+			assert.Equal(t, tt.message, errorResponse.Message)
+
+			mockService.AssertExpectations(t)
+		})
+	}
+}
+
+func TestServer_SubscribeNotifications_WebSocketUpgradeError(t *testing.T) {
+	cfg := createTestConfig(true, "http://example.com")
+	mockService := new(MockWsNotificationsService)
+	mockUpgrader := new(MockWebSocketUpgrader)
+
+	server := &Server{
+		cfg:                    cfg,
+		wsNotificationsService: mockService,
+		upgrader:               mockUpgrader,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/notifications/subscribe?userEmail=test@example.com", nil)
+	rec := httptest.NewRecorder()
+
+	mockUpgrader.On("Upgrade", rec, req, mock.Anything).Return(nil, errors.New("upgrade failed"))
+
+	ctx := context.Background()
+	handler := server.SubscribeNotifications(ctx)
+	handler(rec, req)
+
+	mockUpgrader.AssertExpectations(t)
+	mockService.AssertNotCalled(t, "HandleConnection", mock.Anything, mock.Anything, mock.Anything)
+}
+
+func TestServer_SubscribeNotifications_Success(t *testing.T) {
+	cfg := createTestConfig(true, "http://example.com")
+	mockService := new(MockWsNotificationsService)
+	mockUpgrader := new(MockWebSocketUpgrader)
+
+	server := &Server{
+		cfg:                    cfg,
+		wsNotificationsService: mockService,
+		upgrader:               mockUpgrader,
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/notifications/subscribe?userEmail=test@example.com", nil)
+	rec := httptest.NewRecorder()
+
+	testConn := websocket.Conn{}
+
+	mockUpgrader.On("Upgrade", rec, req, mock.Anything).Return(&testConn, nil)
+	mockService.On("HandleConnection", mock.Anything, "test@example.com", &testConn).Return()
+
+	ctx := context.Background()
+	handler := server.SubscribeNotifications(ctx)
+	handler(rec, req)
+
+	mockUpgrader.AssertExpectations(t)
+	mockService.AssertExpectations(t)
 }

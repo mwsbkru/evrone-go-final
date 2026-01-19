@@ -8,24 +8,35 @@ import (
 
 	"github.com/mwsbkru/evrone-go-final/config"
 	"github.com/mwsbkru/evrone-go-final/internal/entity/dto"
-	"github.com/mwsbkru/evrone-go-final/internal/service"
 
 	websocket "github.com/gorilla/websocket"
 )
 
-type Server struct {
-	cfg                    *config.Config
-	wsNotificationsService *service.WsNotificationsService
-	upgrader               *websocket.Upgrader
+type WsNotificationsService interface {
+	HandleConnection(ctx context.Context, userEmail string, connection *websocket.Conn)
 }
 
-func NewServer(cfg *config.Config, wsNotificationsService *service.WsNotificationsService) *Server {
+type WebSocketUpgrader interface {
+	Upgrade(w http.ResponseWriter, r *http.Request, responseHeader http.Header) (*websocket.Conn, error)
+}
+
+type Server struct {
+	cfg                    *config.Config
+	wsNotificationsService WsNotificationsService
+	upgrader               WebSocketUpgrader
+}
+
+func NewServer(cfg *config.Config, wsNotificationsService WsNotificationsService) *Server {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
 		CheckOrigin:     getCheckOrigin(cfg),
 	}
-	return &Server{cfg: cfg, wsNotificationsService: wsNotificationsService, upgrader: &upgrader}
+	return &Server{
+		cfg:                    cfg,
+		wsNotificationsService: wsNotificationsService,
+		upgrader:               &upgrader,
+	}
 }
 
 func (s *Server) SubscribeNotifications(ctx context.Context) func(http.ResponseWriter, *http.Request) {
