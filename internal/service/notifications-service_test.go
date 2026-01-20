@@ -54,7 +54,7 @@ func TestNotificationsService_Run(t *testing.T) {
 		}
 		service := NewNotificationsService(channels)
 
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond) // context.WithCancel(context.Background())
 		defer cancel()
 
 		var terminator Terminator
@@ -74,9 +74,6 @@ func TestNotificationsService_Run(t *testing.T) {
 			service.Run(ctx)
 			done <- true
 		}()
-
-		time.Sleep(100 * time.Millisecond)
-		cancel()
 
 		select {
 		case <-done:
