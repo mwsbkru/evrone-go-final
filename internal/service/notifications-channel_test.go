@@ -8,20 +8,23 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/mwsbkru/evrone-go-final/config"
 	"github.com/mwsbkru/evrone-go-final/internal/entity"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 func TestNewNotificationChannel(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	cfg := &config.Config{
 		NotificationsRetryCount:           3,
 		NotificationsRetryIntervalSeconds: 5,
 	}
-	mockObserver := new(MockNotificationsObserver)
-	mockProcessor := new(MockNotificationsProcessor)
-	mockDeadProcessor := new(MockDeadNotificationsProcessor)
+	mockObserver := NewMockNotificationsObserver(ctrl)
+	mockProcessor := NewMockNotificationsProcessor(ctrl)
+	mockDeadProcessor := NewMockDeadNotificationsProcessor(ctrl)
 
 	channel := NewNotificationChannel(cfg, "test-channel", mockObserver, mockProcessor, mockDeadProcessor)
 
@@ -35,13 +38,16 @@ func TestNewNotificationChannel(t *testing.T) {
 
 func TestNotificationsChannel_Run(t *testing.T) {
 	synctest.Run(func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := &config.Config{
 			NotificationsRetryCount:           3,
 			NotificationsRetryIntervalSeconds: 5,
 		}
-		mockObserver := new(MockNotificationsObserver)
-		mockProcessor := new(MockNotificationsProcessor)
-		mockDeadProcessor := new(MockDeadNotificationsProcessor)
+		mockObserver := NewMockNotificationsObserver(ctrl)
+		mockProcessor := NewMockNotificationsProcessor(ctrl)
+		mockDeadProcessor := NewMockDeadNotificationsProcessor(ctrl)
 
 		channel := NewNotificationChannel(cfg, "test-channel", mockObserver, mockProcessor, mockDeadProcessor)
 
@@ -51,12 +57,14 @@ func TestNotificationsChannel_Run(t *testing.T) {
 		var wg sync.WaitGroup
 		wg.Add(1)
 
-		mockObserver.On("Subscribe", mock.AnythingOfType("NotificationsSubscriber"), mock.AnythingOfType("Terminator")).Return()
-		mockObserver.On("StartListening", mock.Anything).Run(func(args mock.Arguments) {
+		mockObserver.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Do(func(subscriber NotificationsSubscriber, terminator Terminator) {
+			// Store terminator for later use
+		})
+		mockObserver.EXPECT().StartListening(gomock.Any()).Do(func(ctx context.Context) {
 			// Simulate observer running
 			time.Sleep(50 * time.Millisecond)
 			cancel() // Cancel to stop listening
-		}).Return()
+		})
 
 		// Run in a goroutine since it blocks
 		done := make(chan bool)
@@ -70,20 +78,21 @@ func TestNotificationsChannel_Run(t *testing.T) {
 		case <-time.After(2 * time.Second):
 			t.Fatal("Channel.Run did not complete in time")
 		}
-
-		mockObserver.AssertExpectations(t)
 	})
 }
 
 func TestNotificationsChannel_process_Success(t *testing.T) {
 	synctest.Run(func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := &config.Config{
 			NotificationsRetryCount:           3,
 			NotificationsRetryIntervalSeconds: 5,
 		}
-		mockObserver := new(MockNotificationsObserver)
-		mockProcessor := new(MockNotificationsProcessor)
-		mockDeadProcessor := new(MockDeadNotificationsProcessor)
+		mockObserver := NewMockNotificationsObserver(ctrl)
+		mockProcessor := NewMockNotificationsProcessor(ctrl)
+		mockDeadProcessor := NewMockDeadNotificationsProcessor(ctrl)
 
 		channel := NewNotificationChannel(cfg, "test-channel", mockObserver, mockProcessor, mockDeadProcessor)
 
@@ -95,27 +104,27 @@ func TestNotificationsChannel_process_Success(t *testing.T) {
 			CurrentRetry: 0,
 		}
 
-		mockProcessor.On("Process", ctx, notification).Return(nil).Once()
+		mockProcessor.EXPECT().Process(ctx, notification).Return(nil).Times(1)
 
 		channel.process(ctx, notification)
 
 		// Give goroutine time to complete
 		time.Sleep(50 * time.Millisecond)
-
-		mockProcessor.AssertExpectations(t)
-		mockDeadProcessor.AssertNotCalled(t, "Process")
 	})
 }
 
 func TestNotificationsChannel_process_Retry(t *testing.T) {
 	synctest.Run(func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := &config.Config{
 			NotificationsRetryCount:           3,
 			NotificationsRetryIntervalSeconds: 1, // Short interval for testing
 		}
-		mockObserver := new(MockNotificationsObserver)
-		mockProcessor := new(MockNotificationsProcessor)
-		mockDeadProcessor := new(MockDeadNotificationsProcessor)
+		mockObserver := NewMockNotificationsObserver(ctrl)
+		mockProcessor := NewMockNotificationsProcessor(ctrl)
+		mockDeadProcessor := NewMockDeadNotificationsProcessor(ctrl)
 
 		channel := NewNotificationChannel(cfg, "test-channel", mockObserver, mockProcessor, mockDeadProcessor)
 
@@ -130,30 +139,33 @@ func TestNotificationsChannel_process_Retry(t *testing.T) {
 		}
 
 		// First call fails, second succeeds
-		mockProcessor.On("Process", mock.Anything, mock.Anything).Return(errors.New("processing error")).Once()
-		mockProcessor.On("Process", mock.Anything, mock.MatchedBy(func(n *entity.Notification) bool {
-			return n.CurrentRetry == 1
-		})).Return(nil).Once()
+		mockProcessor.EXPECT().Process(gomock.Any(), gomock.Any()).Return(errors.New("processing error")).Times(1)
+		mockProcessor.EXPECT().Process(gomock.Any(), gomock.Any()).DoAndReturn(func(ctx context.Context, n *entity.Notification) error {
+			if n.CurrentRetry == 1 {
+				return nil
+			}
+			return errors.New("unexpected retry count")
+		}).Times(1)
 
 		channel.process(ctx, notification)
 
 		// Wait for retry to complete
 		time.Sleep(2 * time.Second)
-
-		mockProcessor.AssertExpectations(t)
-		mockDeadProcessor.AssertNotCalled(t, "Process")
 	})
 }
 
 func TestNotificationsChannel_process_MaxRetriesReached(t *testing.T) {
 	synctest.Run(func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := &config.Config{
 			NotificationsRetryCount:           2,
 			NotificationsRetryIntervalSeconds: 1,
 		}
-		mockObserver := new(MockNotificationsObserver)
-		mockProcessor := new(MockNotificationsProcessor)
-		mockDeadProcessor := new(MockDeadNotificationsProcessor)
+		mockObserver := NewMockNotificationsObserver(ctrl)
+		mockProcessor := NewMockNotificationsProcessor(ctrl)
+		mockDeadProcessor := NewMockDeadNotificationsProcessor(ctrl)
 
 		channel := NewNotificationChannel(cfg, "test-channel", mockObserver, mockProcessor, mockDeadProcessor)
 
@@ -171,30 +183,33 @@ func TestNotificationsChannel_process_MaxRetriesReached(t *testing.T) {
 		deadError := errors.New("dead processing error")
 
 		// All retries fail
-		mockProcessor.On("Process", mock.Anything, mock.Anything).Return(processingError).Times(3) // Initial + 2 retries
-		mockDeadProcessor.On("Process", mock.MatchedBy(func(n *entity.Notification) bool {
-			return n.Channel == "test-channel" && n.CurrentRetry == 2
-		}), processingError).Return(deadError).Once()
+		mockProcessor.EXPECT().Process(gomock.Any(), gomock.Any()).Return(processingError).Times(3) // Initial + 2 retries
+		mockDeadProcessor.EXPECT().Process(gomock.Any(), processingError).DoAndReturn(func(n *entity.Notification, err error) error {
+			if n.Channel == "test-channel" && n.CurrentRetry == 2 {
+				return deadError
+			}
+			return errors.New("unexpected notification")
+		}).Times(1)
 
 		channel.process(ctx, notification)
 
 		// Wait for all retries and dead processing
 		time.Sleep(4 * time.Second)
-
-		mockProcessor.AssertExpectations(t)
-		mockDeadProcessor.AssertExpectations(t)
 	})
 }
 
 func TestNotificationsChannel_process_ContextCancelledDuringRetry(t *testing.T) {
 	synctest.Run(func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := &config.Config{
 			NotificationsRetryCount:           3,
 			NotificationsRetryIntervalSeconds: 2,
 		}
-		mockObserver := new(MockNotificationsObserver)
-		mockProcessor := new(MockNotificationsProcessor)
-		mockDeadProcessor := new(MockDeadNotificationsProcessor)
+		mockObserver := NewMockNotificationsObserver(ctrl)
+		mockProcessor := NewMockNotificationsProcessor(ctrl)
+		mockDeadProcessor := NewMockDeadNotificationsProcessor(ctrl)
 
 		channel := NewNotificationChannel(cfg, "test-channel", mockObserver, mockProcessor, mockDeadProcessor)
 
@@ -210,29 +225,29 @@ func TestNotificationsChannel_process_ContextCancelledDuringRetry(t *testing.T) 
 		processingError := errors.New("processing error")
 
 		// First call fails
-		mockProcessor.On("Process", mock.Anything, notification).Return(processingError).Once()
+		mockProcessor.EXPECT().Process(gomock.Any(), notification).Return(processingError).Times(1)
 
 		go channel.process(ctx, notification)
 
 		// Cancel context before retry completes
 		time.Sleep(100 * time.Millisecond)
 		cancel()
-
-		mockProcessor.AssertExpectations(t)
-		mockDeadProcessor.AssertNotCalled(t, "Process")
+		// time.Sleep(100 * time.Millisecond) // Give time for cancellation to propagate
 	})
-
 }
 
 func TestNotificationsChannel_terminator(t *testing.T) {
 	synctest.Run(func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := &config.Config{
 			NotificationsRetryCount:           3,
 			NotificationsRetryIntervalSeconds: 5,
 		}
-		mockObserver := new(MockNotificationsObserver)
-		mockProcessor := new(MockNotificationsProcessor)
-		mockDeadProcessor := new(MockDeadNotificationsProcessor)
+		mockObserver := NewMockNotificationsObserver(ctrl)
+		mockProcessor := NewMockNotificationsProcessor(ctrl)
+		mockDeadProcessor := NewMockDeadNotificationsProcessor(ctrl)
 
 		channel := NewNotificationChannel(cfg, "test-channel", mockObserver, mockProcessor, mockDeadProcessor)
 
@@ -261,13 +276,16 @@ func TestNotificationsChannel_terminator(t *testing.T) {
 
 func TestNotificationsChannel_getSubscriber(t *testing.T) {
 	synctest.Run(func() {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
 		cfg := &config.Config{
 			NotificationsRetryCount:           3,
 			NotificationsRetryIntervalSeconds: 5,
 		}
-		mockObserver := new(MockNotificationsObserver)
-		mockProcessor := new(MockNotificationsProcessor)
-		mockDeadProcessor := new(MockDeadNotificationsProcessor)
+		mockObserver := NewMockNotificationsObserver(ctrl)
+		mockProcessor := NewMockNotificationsProcessor(ctrl)
+		mockDeadProcessor := NewMockDeadNotificationsProcessor(ctrl)
 
 		channel := NewNotificationChannel(cfg, "test-channel", mockObserver, mockProcessor, mockDeadProcessor)
 
@@ -283,14 +301,12 @@ func TestNotificationsChannel_getSubscriber(t *testing.T) {
 			CurrentRetry: 0,
 		}
 
-		mockProcessor.On("Process", ctx, notification).Return(nil).Once()
+		mockProcessor.EXPECT().Process(ctx, notification).Return(nil).Times(1)
 
 		// Call subscriber (which should call process in a goroutine)
 		subscriber(notification)
 
 		// Wait for goroutine to complete
 		time.Sleep(50 * time.Millisecond)
-
-		mockProcessor.AssertExpectations(t)
 	})
 }

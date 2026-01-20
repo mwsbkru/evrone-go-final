@@ -6,21 +6,9 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
-
-var observerMockFunctionSubscribe = func(args mock.Arguments) {
-	// Simulate observer running
-	time.Sleep(50 * time.Millisecond)
-	terminator := args.Get(1).(Terminator)
-	terminator()
-}
-
-var observerMockFunctionStartListening = func(args mock.Arguments) {
-	ctx := args.Get(0).(context.Context)
-	<-ctx.Done()
-}
 
 func TestNewNotificationsService(t *testing.T) {
 	channels := []*NotificationsChannel{
@@ -45,7 +33,10 @@ func TestNewNotificationsService_EmptyChannels(t *testing.T) {
 
 func TestNotificationsService_Run(t *testing.T) {
 	synctest.Run(func() {
-		mockObserver := new(MockNotificationsObserver)
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+
+		mockObserver := NewMockNotificationsObserver(ctrl)
 
 		channels := []*NotificationsChannel{
 			NewNotificationChannel(nil, "channel1", mockObserver, nil, nil),
@@ -54,20 +45,19 @@ func TestNotificationsService_Run(t *testing.T) {
 		}
 		service := NewNotificationsService(channels)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond) // context.WithCancel(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
 
 		var terminator Terminator
 
-		mockObserver.On("Subscribe", mock.AnythingOfType("NotificationsSubscriber"), mock.AnythingOfType("Terminator")).Run(func(args mock.Arguments) {
-			terminator = args.Get(1).(Terminator)
-		}).Return()
+		mockObserver.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Do(func(subscriber NotificationsSubscriber, term Terminator) {
+			terminator = term
+		}).Times(3)
 
-		mockObserver.On("StartListening", mock.Anything).Run(func(args mock.Arguments) {
-			ctx := args.Get(0).(context.Context)
+		mockObserver.EXPECT().StartListening(gomock.Any()).Do(func(ctx context.Context) {
 			<-ctx.Done()
 			terminator()
-		}).Return()
+		}).Times(3)
 
 		done := make(chan bool)
 		go func() {
@@ -80,7 +70,5 @@ func TestNotificationsService_Run(t *testing.T) {
 		case <-time.After(2 * time.Second):
 			t.Fatal("Service.Run did not complete in time")
 		}
-
-		mockObserver.AssertExpectations(t)
 	})
 }
