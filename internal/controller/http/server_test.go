@@ -8,16 +8,35 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	gomock "github.com/golang/mock/gomock"
+	"github.com/mwsbkru/evrone-go-final/config"
 	"github.com/mwsbkru/evrone-go-final/internal/entity/dto"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 
 	websocket "github.com/gorilla/websocket"
 )
 
+// Helper function to create test server with mock service
+func createTestServer(cfg *config.Config, wsService WsNotificationsService) *Server {
+	return NewServer(cfg, wsService)
+}
+
+// Helper function to create test config
+func createTestConfig(checkOrigin bool, allowedOrigin string) *config.Config {
+	return &config.Config{
+		WS: config.WSConfig{
+			CheckOrigin:   checkOrigin,
+			AllowedOrigin: allowedOrigin,
+		},
+	}
+}
+
 func TestNewServer(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	cfg := createTestConfig(true, "http://example.com")
-	mockService := new(MockWsNotificationsService)
+	mockService := NewMockWsNotificationsService(ctrl)
 
 	server := NewServer(cfg, mockService)
 
@@ -89,8 +108,11 @@ func TestGetCheckOrigin(t *testing.T) {
 }
 
 func TestServer_respondWithError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	cfg := createTestConfig(true, "http://example.com")
-	mockService := new(MockWsNotificationsService)
+	mockService := NewMockWsNotificationsService(ctrl)
 	server := createTestServer(cfg, mockService)
 
 	tests := []struct {
@@ -150,10 +172,6 @@ func TestServer_respondWithError(t *testing.T) {
 }
 
 func TestServer_SubscribeNotifications_MissingUserEmail(t *testing.T) {
-	cfg := createTestConfig(true, "http://example.com")
-	mockService := new(MockWsNotificationsService)
-	server := createTestServer(cfg, mockService)
-
 	tests := []struct {
 		name    string
 		url     string
@@ -173,6 +191,13 @@ func TestServer_SubscribeNotifications_MissingUserEmail(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			cfg := createTestConfig(true, "http://example.com")
+			mockService := NewMockWsNotificationsService(ctrl)
+			server := createTestServer(cfg, mockService)
+
 			req := httptest.NewRequest(http.MethodGet, tt.url, nil)
 			rec := httptest.NewRecorder()
 
@@ -187,16 +212,17 @@ func TestServer_SubscribeNotifications_MissingUserEmail(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, http.StatusBadRequest, errorResponse.Code)
 			assert.Equal(t, tt.message, errorResponse.Message)
-
-			mockService.AssertExpectations(t)
 		})
 	}
 }
 
 func TestServer_SubscribeNotifications_WebSocketUpgradeError(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	cfg := createTestConfig(true, "http://example.com")
-	mockService := new(MockWsNotificationsService)
-	mockUpgrader := new(MockWebSocketUpgrader)
+	mockService := NewMockWsNotificationsService(ctrl)
+	mockUpgrader := NewMockWebSocketUpgrader(ctrl)
 
 	server := &Server{
 		cfg:                    cfg,
@@ -207,20 +233,20 @@ func TestServer_SubscribeNotifications_WebSocketUpgradeError(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/notifications/subscribe?userEmail=test@example.com", nil)
 	rec := httptest.NewRecorder()
 
-	mockUpgrader.On("Upgrade", rec, req, mock.Anything).Return(nil, errors.New("upgrade failed"))
+	mockUpgrader.EXPECT().Upgrade(rec, req, gomock.Any()).Return(nil, errors.New("upgrade failed"))
 
 	ctx := context.Background()
 	handler := server.SubscribeNotifications(ctx)
 	handler(rec, req)
-
-	mockUpgrader.AssertExpectations(t)
-	mockService.AssertNotCalled(t, "HandleConnection", mock.Anything, mock.Anything, mock.Anything)
 }
 
 func TestServer_SubscribeNotifications_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	cfg := createTestConfig(true, "http://example.com")
-	mockService := new(MockWsNotificationsService)
-	mockUpgrader := new(MockWebSocketUpgrader)
+	mockService := NewMockWsNotificationsService(ctrl)
+	mockUpgrader := NewMockWebSocketUpgrader(ctrl)
 
 	server := &Server{
 		cfg:                    cfg,
@@ -233,13 +259,10 @@ func TestServer_SubscribeNotifications_Success(t *testing.T) {
 
 	testConn := websocket.Conn{}
 
-	mockUpgrader.On("Upgrade", rec, req, mock.Anything).Return(&testConn, nil)
-	mockService.On("HandleConnection", mock.Anything, "test@example.com", &testConn).Return()
+	mockUpgrader.EXPECT().Upgrade(rec, req, gomock.Any()).Return(&testConn, nil)
+	mockService.EXPECT().HandleConnection(gomock.Any(), "test@example.com", &testConn)
 
 	ctx := context.Background()
 	handler := server.SubscribeNotifications(ctx)
 	handler(rec, req)
-
-	mockUpgrader.AssertExpectations(t)
-	mockService.AssertExpectations(t)
 }

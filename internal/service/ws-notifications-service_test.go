@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang/mock/gomock"
 	"github.com/gorilla/websocket"
 	"github.com/mwsbkru/evrone-go-final/internal/entity"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 )
 
 // createTestWebSocketConnection creates a test websocket connection using a test server
@@ -53,7 +53,10 @@ func createTestWebSocketConnection(t *testing.T) (*websocket.Conn, func()) {
 }
 
 func TestNewWsNotificationsService(t *testing.T) {
-	mockReceiver := new(MockWsNotificationsReceiver)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockReceiver := NewMockWsNotificationsReceiver(ctrl)
 	service := NewWsNotificationsService(mockReceiver)
 
 	assert.NotNil(t, service)
@@ -63,19 +66,23 @@ func TestNewWsNotificationsService(t *testing.T) {
 }
 
 func TestWsNotificationsService_Run(t *testing.T) {
-	mockReceiver := new(MockWsNotificationsReceiver)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockReceiver := NewMockWsNotificationsReceiver(ctrl)
 	service := NewWsNotificationsService(mockReceiver)
 
-	mockReceiver.On("Subscribe", mock.AnythingOfType("ReceivedNotificationProcessor"), mock.AnythingOfType("WsConnectionTerminator")).Return()
+	mockReceiver.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Times(1)
 
 	ctx := context.Background()
 	service.Run(ctx)
-
-	mockReceiver.AssertExpectations(t)
 }
 
 func TestWsNotificationsService_HandleConnection_NewConnection(t *testing.T) {
-	mockReceiver := new(MockWsNotificationsReceiver)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockReceiver := NewMockWsNotificationsReceiver(ctrl)
 	service := NewWsNotificationsService(mockReceiver)
 
 	// Create a real websocket connection for testing
@@ -84,8 +91,8 @@ func TestWsNotificationsService_HandleConnection_NewConnection(t *testing.T) {
 
 	userEmail := "test@example.com"
 
-	mockReceiver.On("Subscribe", mock.AnythingOfType("ReceivedNotificationProcessor"), mock.AnythingOfType("WsConnectionTerminator")).Return()
-	mockReceiver.On("ReceiveNotifications", mock.Anything, userEmail).Return()
+	mockReceiver.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Times(1)
+	mockReceiver.EXPECT().ReceiveNotifications(gomock.Any(), userEmail).Times(1)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -98,11 +105,13 @@ func TestWsNotificationsService_HandleConnection_NewConnection(t *testing.T) {
 
 	assert.Contains(t, service.connections, userEmail)
 	assert.Equal(t, conn, service.connections[userEmail])
-	mockReceiver.AssertExpectations(t)
 }
 
 func TestWsNotificationsService_HandleConnection_ExistingConnection(t *testing.T) {
-	mockReceiver := new(MockWsNotificationsReceiver)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockReceiver := NewMockWsNotificationsReceiver(ctrl)
 	service := NewWsNotificationsService(mockReceiver)
 	ctx := context.Background()
 
@@ -115,8 +124,8 @@ func TestWsNotificationsService_HandleConnection_ExistingConnection(t *testing.T
 	// Set up existing connection
 	service.connections[userEmail] = oldConn
 
-	mockReceiver.On("Subscribe", mock.AnythingOfType("ReceivedNotificationProcessor"), mock.AnythingOfType("WsConnectionTerminator")).Return()
-	mockReceiver.On("ReceiveNotifications", mock.Anything, userEmail).Return()
+	mockReceiver.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Times(1)
+	mockReceiver.EXPECT().ReceiveNotifications(gomock.Any(), userEmail).Times(1)
 
 	service.Run(ctx)
 	service.HandleConnection(ctx, userEmail, newConn)
@@ -126,11 +135,13 @@ func TestWsNotificationsService_HandleConnection_ExistingConnection(t *testing.T
 
 	// New connection should replace old one
 	assert.Equal(t, newConn, service.connections[userEmail])
-	mockReceiver.AssertExpectations(t)
 }
 
 func TestWsNotificationsService_handleNotification(t *testing.T) {
-	mockReceiver := new(MockWsNotificationsReceiver)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockReceiver := NewMockWsNotificationsReceiver(ctrl)
 	service := NewWsNotificationsService(mockReceiver)
 
 	userEmail := "test@example.com"
@@ -154,7 +165,10 @@ func TestWsNotificationsService_handleNotification(t *testing.T) {
 }
 
 func TestWsNotificationsService_handleNotification_NoConnection(t *testing.T) {
-	mockReceiver := new(MockWsNotificationsReceiver)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockReceiver := NewMockWsNotificationsReceiver(ctrl)
 	service := NewWsNotificationsService(mockReceiver)
 
 	notification := entity.Notification{
@@ -167,7 +181,10 @@ func TestWsNotificationsService_handleNotification_NoConnection(t *testing.T) {
 }
 
 func TestWsNotificationsService_handleConnectionTermination(t *testing.T) {
-	mockReceiver := new(MockWsNotificationsReceiver)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockReceiver := NewMockWsNotificationsReceiver(ctrl)
 	service := NewWsNotificationsService(mockReceiver)
 
 	userEmail := "test@example.com"
@@ -181,7 +198,10 @@ func TestWsNotificationsService_handleConnectionTermination(t *testing.T) {
 }
 
 func TestWsNotificationsService_terminateConnection_NoConnection(t *testing.T) {
-	mockReceiver := new(MockWsNotificationsReceiver)
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockReceiver := NewMockWsNotificationsReceiver(ctrl)
 	service := NewWsNotificationsService(mockReceiver)
 
 	userEmail := "nonexistent@example.com"

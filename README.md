@@ -1,6 +1,9 @@
 docker compose build && docker compose up
 clear && GOEXPERIMENT=synctest go test ./...
 
+mockgen -source=internal/service/contracts.go -destination=internal/service/mocks.go -package=http
+
+
 
 {
 "user_email": "w1@rty.ru",
