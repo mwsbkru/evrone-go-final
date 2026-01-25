@@ -36,28 +36,48 @@ func TestNotificationsService_Run(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
-		mockObserver := NewMockNotificationsObserver(ctrl)
+		mockObserver1 := NewMockNotificationsObserver(ctrl)
+		mockObserver2 := NewMockNotificationsObserver(ctrl)
+		mockObserver3 := NewMockNotificationsObserver(ctrl)
 
 		channels := []*NotificationsChannel{
-			NewNotificationChannel(nil, "channel1", mockObserver, nil, nil),
-			NewNotificationChannel(nil, "channel2", mockObserver, nil, nil),
-			NewNotificationChannel(nil, "channel3", mockObserver, nil, nil),
+			NewNotificationChannel(nil, "channel1", mockObserver1, nil, nil),
+			NewNotificationChannel(nil, "channel2", mockObserver2, nil, nil),
+			NewNotificationChannel(nil, "channel3", mockObserver3, nil, nil),
 		}
 		service := NewNotificationsService(channels)
 
 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
 		defer cancel()
 
-		var terminator Terminator
+		var terminator1, terminator2, terminator3 Terminator
 
-		mockObserver.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Do(func(subscriber NotificationsSubscriber, term Terminator) {
-			terminator = term
-		}).Times(3)
+		mockObserver1.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Do(func(subscriber NotificationsSubscriber, term Terminator) {
+			terminator1 = term
+		}).Times(1)
 
-		mockObserver.EXPECT().StartListening(gomock.Any()).Do(func(ctx context.Context) {
+		mockObserver1.EXPECT().StartListening(gomock.Any()).Do(func(ctx context.Context) {
 			<-ctx.Done()
-			terminator()
-		}).Times(3)
+			terminator1()
+		}).Times(1)
+
+		mockObserver2.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Do(func(subscriber NotificationsSubscriber, term Terminator) {
+			terminator2 = term
+		}).Times(1)
+
+		mockObserver2.EXPECT().StartListening(gomock.Any()).Do(func(ctx context.Context) {
+			<-ctx.Done()
+			terminator2()
+		}).Times(1)
+
+		mockObserver3.EXPECT().Subscribe(gomock.Any(), gomock.Any()).Do(func(subscriber NotificationsSubscriber, term Terminator) {
+			terminator3 = term
+		}).Times(1)
+
+		mockObserver3.EXPECT().StartListening(gomock.Any()).Do(func(ctx context.Context) {
+			<-ctx.Done()
+			terminator3()
+		}).Times(1)
 
 		done := make(chan bool)
 		go func() {

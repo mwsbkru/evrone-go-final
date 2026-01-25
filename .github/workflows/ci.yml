@@ -35,7 +35,7 @@ jobs:
     - name: Run unit tests
       env:
         GOEXPERIMENT: synctest
-      run: go test -v -coverprofile=coverage.out ./...
+      run: go test -race -v -coverprofile=coverage.out ./...
 
     - name: Upload coverage reports
       uses: codecov/codecov-action@v4
