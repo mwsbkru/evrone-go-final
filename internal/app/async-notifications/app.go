@@ -18,13 +18,13 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("can't init Kafka client: %w", err)
 	}
-	defer kafkaClient.Close()
+	defer kafkaClient.Close() //nolint:errcheck
 
 	producer, err := kafka.NewProducer([]string{cfg.Kafka.Brokers})
 	if err != nil {
 		return fmt.Errorf("can't init Kafka producer: %w", err)
 	}
-	defer producer.Close()
+	defer producer.Close() //nolint:errcheck
 
 	deadProcessor := dead_notifications_processor.NewKafkaDeadNotificationsProcessor(producer.GetProducer(), cfg)
 
@@ -32,19 +32,19 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("can't initialize SMTP client: %w", err)
 	}
-	defer smtpClient.Close()
+	defer smtpClient.Close() //nolint:errcheck
 
 	notificationsChannelEmail, consumerEmail, err := initializeEmailNotificationChannel(cfg, kafkaClient, smtpClient, deadProcessor)
 	if err != nil {
 		return fmt.Errorf("can't initialize email notification channel: %w", err)
 	}
-	defer consumerEmail.Close()
+	defer consumerEmail.Close() //nolint:errcheck
 
 	notificationsChannelPush, consumerPush, err := initializePushNotificationChannel(cfg, kafkaClient, deadProcessor)
 	if err != nil {
 		return fmt.Errorf("can't initialize push notification channel: %w", err)
 	}
-	defer consumerPush.Close()
+	defer consumerPush.Close() //nolint:errcheck
 
 	notificationsChannels := []*service.NotificationsChannel{notificationsChannelEmail, notificationsChannelPush}
 	notificationsService := service.NewNotificationsService(notificationsChannels)

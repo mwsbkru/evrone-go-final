@@ -35,12 +35,12 @@ func (u *WsNotificationsService) Run(ctx context.Context) {
 func (u *WsNotificationsService) HandleConnection(ctx context.Context, userEmail string, connection *websocket.Conn) {
 	currentConnection, ok := u.connections[userEmail]
 	if ok {
-		currentConnection.WriteMessage(websocket.TextMessage, prepareMessageForSending("new attempt to connect to WS, terminating current connection"))
+		currentConnection.WriteMessage(websocket.TextMessage, prepareMessageForSending("new attempt to connect to WS, terminating current connection")) //nolint:errcheck
 		u.handleConnectionTermination(userEmail)
 
-		connection.WriteMessage(websocket.TextMessage, prepareMessageForSending("terminating current connection, try again"))
-		connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server"))
-		connection.Close()
+		connection.WriteMessage(websocket.TextMessage, prepareMessageForSending("terminating current connection, try again"))                      //nolint:errcheck
+		connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server")) //nolint:errcheck
+		connection.Close()                                                                                                                         //nolint:errcheck
 	}
 
 	u.connections[userEmail] = connection
@@ -80,7 +80,7 @@ func (u *WsNotificationsService) handleConnectionClosedByUser(userEmail string, 
 
 func (u *WsNotificationsService) handleNotification(notification entity.Notification) {
 	if conn, ok := u.connections[notification.UserEmail]; ok {
-		conn.WriteMessage(websocket.TextMessage, prepareMessageForSending(notification.Body))
+		conn.WriteMessage(websocket.TextMessage, prepareMessageForSending(notification.Body)) //nolint:errcheck
 	}
 }
 
@@ -93,9 +93,9 @@ func (u *WsNotificationsService) terminateConnection(userEmail string) {
 	slog.Info("Termination connection", slog.String("user_email", userEmail))
 	if conn, ok := u.connections[userEmail]; ok {
 		delete(u.connections, userEmail)
-		conn.WriteMessage(websocket.TextMessage, prepareMessageForSending("connection closed by server"))
-		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server"))
-		conn.Close()
+		conn.WriteMessage(websocket.TextMessage, prepareMessageForSending("connection closed by server"))                                    //nolint:errcheck
+		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server")) //nolint:errcheck
+		conn.Close()                                                                                                                         //nolint:errcheck
 	}
 }
 

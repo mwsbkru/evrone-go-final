@@ -22,17 +22,17 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("can't init Kafka client: %w", err)
 	}
-	defer kafkaClient.Close()
+	defer kafkaClient.Close() //nolint:errcheck
 
 	redisClient := redis.NewClient(cfg)
-	defer redisClient.Close()
+	defer redisClient.Close() //nolint:errcheck
 
 	notificationsChannelWs, consumerWs, producer, err := initializeWSNotificationChannel(cfg, kafkaClient, redisClient)
 	if err != nil {
 		return fmt.Errorf("can't initialize WS notification channel: %w", err)
 	}
-	defer consumerWs.Close()
-	defer producer.Close()
+	defer consumerWs.Close() //nolint:errcheck
+	defer producer.Close()   //nolint:errcheck
 
 	notificationsChannels := []*service.NotificationsChannel{notificationsChannelWs}
 	notificationsService := service.NewNotificationsService(notificationsChannels)
@@ -67,7 +67,7 @@ func initializeWSNotificationChannel(
 
 	producer, err := kafka.NewProducer([]string{cfg.Kafka.Brokers})
 	if err != nil {
-		consumerWs.Close()
+		consumerWs.Close() //nolint:errcheck
 		return nil, nil, nil, fmt.Errorf("can't init Kafka producer: %w", err)
 	}
 
