@@ -17,9 +17,3 @@
 11. научить WS вычитывать очереди redis
 12. Напилить тесты для рассыльщика почты и push
 13. напилить тесты для рассыльщика WS
-
-
-
-
-
-kafka-topics-ui Error pull access denied for christianhujer/kafka-topics-ui, repository does not exist or may require 'docker login': denied: requested access to the resource is denied
