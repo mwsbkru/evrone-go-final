@@ -98,7 +98,7 @@ When running `docker compose up`, these UIs and ports are available:
 | Service      | URL                     | Description                                      |
 |-------------|-------------------------|--------------------------------------------------|
 | Kafka UI    | http://localhost:8000   | Manage topics, consumer groups, and messages     |
-| MailHog     | http://localhost:8025/  | Inbox for emails sent via SMTP (port 1025)       |
+| MailHog     | http://localhost:8025/  | Inbox for emails sent via SMTP (port 1025) login: test, password: test      |
 | Redis Insight | http://localhost:5540/ | Inspect Redis data used by ws-notifications      |
 
 **Note:** Kafka is on port 9092, Redis on 6379, MailHog SMTP on 1025. Use these for configuring producers or debugging.
