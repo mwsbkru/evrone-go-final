@@ -24,3 +24,8 @@ http://localhost:8080/notifications/subscribe?userEmail=w1@rty.ru
 - закрытие коннеккта сервером
 - отправка сообщения когда пользователь оффлайн
 - повторное подключение клиента с одним и тем же email
+
+
+alias glint='/opt/homebrew/Cellar/golangci-lint/2.8.0/bin/golangci-lint'
+
+clear && GOEXPERIMENT=synctest glint run ./...

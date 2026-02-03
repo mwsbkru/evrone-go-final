@@ -17,5 +17,5 @@ func (c *ConsoleNotificationsProcessor) Process(ctx context.Context, notificatio
 	slog.Info(c.Name)
 	slog.Info(notification.Body)
 	slog.Info("---------------------------------------------------")
-	return errors.New("Bang!")
+	return errors.New("Bang")
 }

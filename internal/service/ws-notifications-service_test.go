@@ -45,7 +45,7 @@ func createTestWebSocketConnection(t *testing.T) (*websocket.Conn, func()) {
 	}
 
 	cleanup := func() {
-		conn.Close()
+		conn.Close() //nolint:errcheck
 		server.Close()
 	}
 

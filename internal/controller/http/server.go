@@ -70,7 +70,7 @@ func (s *Server) respondWithError(writer http.ResponseWriter, code int, message 
 		return
 	}
 	writer.WriteHeader(code)
-	writer.Write(responseBody)
+	writer.Write(responseBody) //nolint:errcheck
 }
 
 func getCheckOrigin(cfg *config.Config) func(r *http.Request) bool {
