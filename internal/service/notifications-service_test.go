@@ -32,7 +32,7 @@ func TestNewNotificationsService_EmptyChannels(t *testing.T) {
 }
 
 func TestNotificationsService_Run(t *testing.T) {
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 

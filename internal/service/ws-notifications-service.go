@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/mwsbkru/evrone-go-final/internal/entity"
@@ -20,12 +21,13 @@ type WsNotificationsReceiver interface {
 }
 
 type WsNotificationsService struct {
-	connections             map[string]*websocket.Conn
+	clients                 map[string]*WsNotificationsClient
 	wsNotificationsReceiver WsNotificationsReceiver
+	mu                      sync.RWMutex
 }
 
 func NewWsNotificationsService(wsNotificationsReceiver WsNotificationsReceiver) *WsNotificationsService {
-	return &WsNotificationsService{connections: make(map[string]*websocket.Conn), wsNotificationsReceiver: wsNotificationsReceiver}
+	return &WsNotificationsService{clients: make(map[string]*WsNotificationsClient), wsNotificationsReceiver: wsNotificationsReceiver}
 }
 
 func (u *WsNotificationsService) Run(ctx context.Context) {
@@ -33,69 +35,71 @@ func (u *WsNotificationsService) Run(ctx context.Context) {
 }
 
 func (u *WsNotificationsService) HandleConnection(ctx context.Context, userEmail string, connection *websocket.Conn) {
-	currentConnection, ok := u.connections[userEmail]
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	currentClient, ok := u.clients[userEmail]
 	if ok {
-		currentConnection.WriteMessage(websocket.TextMessage, prepareMessageForSending("new attempt to connect to WS, terminating current connection")) //nolint:errcheck
-		u.handleConnectionTermination(userEmail)
-
-		connection.WriteMessage(websocket.TextMessage, prepareMessageForSending("terminating current connection, try again"))                      //nolint:errcheck
-		connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server")) //nolint:errcheck
-		connection.Close()                                                                                                                         //nolint:errcheck
+		slog.Info("New attempt to connect to WS, terminating current connection", slog.String("user_email", userEmail))
+		currentClient.SendNotification(prepareMessageForSending("new attempt to connect to WS, terminating current connection"))
+		currentClient.Close()
+		delete(u.clients, userEmail)
 	}
-
-	u.connections[userEmail] = connection
-	go u.handleConnection(ctx, userEmail, connection)
-}
-
-func (u *WsNotificationsService) handleConnection(ctx context.Context, userEmail string, connection *websocket.Conn) {
-	slog.Info("New WS connection", slog.String("user_email", userEmail))
-	defer slog.Info("WS connection closed", slog.String("user_email", userEmail))
+	fmt.Println(u.clients)
 	ctx, cancel := context.WithCancel(ctx)
+	slog.Info("Preparing new WS connection", slog.String("user_email", userEmail))
+	newClient := NewWsNotificationsClient(connection, userEmail, cancel)
+	u.clients[userEmail] = newClient
+
+	slog.Info("New WS connection", slog.String("user_email", userEmail))
+	fmt.Println(u.clients)
 	go u.wsNotificationsReceiver.ReceiveNotifications(ctx, userEmail)
-	u.handleConnectionClosedByUser(userEmail, cancel)
-}
-
-func (u *WsNotificationsService) handleConnectionClosedByUser(userEmail string, cancel context.CancelFunc) {
-	for {
-		slog.Info("Waiting for reading message from WS connection", slog.String("user_email", userEmail))
-
-		if conn, ok := u.connections[userEmail]; ok {
-			messageType, _, err := conn.ReadMessage()
-			if err != nil {
-				slog.Error("Error in handleConnectionClosedByUser", slog.String("user_email", userEmail), slog.String("error", err.Error()))
-				cancel()
-				return
-			}
-
-			if messageType == websocket.CloseMessage {
-				slog.Info("WS connection closed by user", slog.String("user_email", userEmail))
-				cancel()
-				return
-			}
-		} else {
-			return
-		}
-	}
+	go u.handleConnectionClosedByUser(userEmail, cancel)
 }
 
 func (u *WsNotificationsService) handleNotification(notification entity.Notification) {
-	if conn, ok := u.connections[notification.UserEmail]; ok {
-		conn.WriteMessage(websocket.TextMessage, prepareMessageForSending(notification.Body)) //nolint:errcheck
+	u.mu.RLock()
+	client, ok := u.clients[notification.UserEmail]
+	u.mu.RUnlock()
+
+	if ok {
+		defer slog.Info("WS Send notification", slog.String("user_email", notification.UserEmail), slog.String("message", notification.Body))
+		client.SendNotification(prepareMessageForSending(notification.Body)) //nolint:errcheck
+	} else {
+		slog.Info("WS  notification not delivered, user connection not found", slog.String("user_email", notification.UserEmail), slog.String("message", notification.Body))
+	}
+}
+
+func (u *WsNotificationsService) handleConnectionClosedByUser(userEmail string, cancel context.CancelFunc) {
+	u.mu.RLock()
+	client, ok := u.clients[userEmail]
+	u.mu.RUnlock()
+
+	if ok {
+		slog.Info("Waiting for closing WS connection by user", slog.String("user_email", userEmail))
+		<-client.Closed()
+		cancel()
+		u.mu.Lock()
+		if _, ok := u.clients[userEmail]; ok {
+			delete(u.clients, userEmail)
+		}
+		u.mu.Unlock()
 	}
 }
 
 func (u *WsNotificationsService) handleConnectionTermination(userEmail string) {
 	slog.Info("handleConnectionTermination run", slog.String("user_email", userEmail))
-	u.terminateConnection(userEmail)
-}
-
-func (u *WsNotificationsService) terminateConnection(userEmail string) {
-	slog.Info("Termination connection", slog.String("user_email", userEmail))
-	if conn, ok := u.connections[userEmail]; ok {
-		delete(u.connections, userEmail)
-		conn.WriteMessage(websocket.TextMessage, prepareMessageForSending("connection closed by server"))                                    //nolint:errcheck
-		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server")) //nolint:errcheck
-		conn.Close()                                                                                                                         //nolint:errcheck
+	u.mu.RLock()
+	client, ok := u.clients[userEmail]
+	u.mu.RUnlock()
+	if ok {
+		slog.Info("Delete client", slog.String("user_email", userEmail))
+		u.mu.Lock()
+		if _, ok := u.clients[userEmail]; ok {
+			delete(u.clients, userEmail)
+		}
+		u.mu.Unlock()
+		client.Close()
 	}
 }
 
