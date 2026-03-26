@@ -20,12 +20,12 @@ type WsNotificationsReceiver interface {
 }
 
 type WsNotificationsService struct {
-	connections             map[string]*websocket.Conn
+	clients                 map[string]*WsNotificationsClient
 	wsNotificationsReceiver WsNotificationsReceiver
 }
 
 func NewWsNotificationsService(wsNotificationsReceiver WsNotificationsReceiver) *WsNotificationsService {
-	return &WsNotificationsService{connections: make(map[string]*websocket.Conn), wsNotificationsReceiver: wsNotificationsReceiver}
+	return &WsNotificationsService{clients: make(map[string]*WsNotificationsClient), wsNotificationsReceiver: wsNotificationsReceiver}
 }
 
 func (u *WsNotificationsService) Run(ctx context.Context) {
@@ -33,21 +33,19 @@ func (u *WsNotificationsService) Run(ctx context.Context) {
 }
 
 func (u *WsNotificationsService) HandleConnection(ctx context.Context, userEmail string, connection *websocket.Conn) {
-	currentConnection, ok := u.connections[userEmail]
+	currentClient, ok := u.clients[userEmail]
 	if ok {
-		currentConnection.WriteMessage(websocket.TextMessage, prepareMessageForSending("new attempt to connect to WS, terminating current connection")) //nolint:errcheck
-		u.handleConnectionTermination(userEmail)
-
-		connection.WriteMessage(websocket.TextMessage, prepareMessageForSending("terminating current connection, try again"))                      //nolint:errcheck
-		connection.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server")) //nolint:errcheck
-		connection.Close()                                                                                                                         //nolint:errcheck
+		slog.Info("New attempt to connect to WS, terminating current connection", slog.String("user_email", userEmail))
+		currentClient.SendNotification(prepareMessageForSending("new attempt to connect to WS, terminating current connection"))
+		u.handleConnectionTermination(userEmail) //nolint:errcheck
 	}
-
-	u.connections[userEmail] = connection
-	go u.handleConnection(ctx, userEmail, connection)
+	slog.Info("Preparing new WS connection", slog.String("user_email", userEmail))
+	u.clients[userEmail] = NewWsNotificationsClient(connection, userEmail)
+	go u.handleConnection(ctx, userEmail, currentClient)
 }
 
-func (u *WsNotificationsService) handleConnection(ctx context.Context, userEmail string, connection *websocket.Conn) {
+// TODO remove WsNotificationsClient
+func (u *WsNotificationsService) handleConnection(ctx context.Context, userEmail string, wsClient *WsNotificationsClient) {
 	slog.Info("New WS connection", slog.String("user_email", userEmail))
 	defer slog.Info("WS connection closed", slog.String("user_email", userEmail))
 	ctx, cancel := context.WithCancel(ctx)
@@ -59,19 +57,8 @@ func (u *WsNotificationsService) handleConnectionClosedByUser(userEmail string, 
 	for {
 		slog.Info("Waiting for reading message from WS connection", slog.String("user_email", userEmail))
 
-		if conn, ok := u.connections[userEmail]; ok {
-			messageType, _, err := conn.ReadMessage()
-			if err != nil {
-				slog.Error("Error in handleConnectionClosedByUser", slog.String("user_email", userEmail), slog.String("error", err.Error()))
-				cancel()
-				return
-			}
-
-			if messageType == websocket.CloseMessage {
-				slog.Info("WS connection closed by user", slog.String("user_email", userEmail))
-				cancel()
-				return
-			}
+		if client, ok := u.clients[userEmail]; ok {
+			client.Closed()
 		} else {
 			return
 		}
@@ -79,8 +66,8 @@ func (u *WsNotificationsService) handleConnectionClosedByUser(userEmail string, 
 }
 
 func (u *WsNotificationsService) handleNotification(notification entity.Notification) {
-	if conn, ok := u.connections[notification.UserEmail]; ok {
-		conn.WriteMessage(websocket.TextMessage, prepareMessageForSending(notification.Body)) //nolint:errcheck
+	if client, ok := u.clients[notification.UserEmail]; ok {
+		client.SendNotification(prepareMessageForSending(notification.Body)) //nolint:errcheck
 	}
 }
 
@@ -91,11 +78,10 @@ func (u *WsNotificationsService) handleConnectionTermination(userEmail string) {
 
 func (u *WsNotificationsService) terminateConnection(userEmail string) {
 	slog.Info("Termination connection", slog.String("user_email", userEmail))
-	if conn, ok := u.connections[userEmail]; ok {
-		delete(u.connections, userEmail)
-		conn.WriteMessage(websocket.TextMessage, prepareMessageForSending("connection closed by server"))                                    //nolint:errcheck
-		conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, "connection closed by server")) //nolint:errcheck
-		conn.Close()                                                                                                                         //nolint:errcheck
+	if client, ok := u.clients[userEmail]; ok {
+		delete(u.clients, userEmail)
+		client.SendNotification(prepareMessageForSending("connection closed by server")) //nolint:errcheck
+		client.Close()                                                                   //nolint:errcheck
 	}
 }
 
