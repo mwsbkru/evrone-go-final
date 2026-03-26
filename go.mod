@@ -1,9 +1,10 @@
 module github.com/mwsbkru/evrone-go-final
 
-go 1.25.3
+go 1.26.1
 
 require (
 	github.com/IBM/sarama v1.46.3
+	github.com/golang/mock v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/redis/go-redis/v9 v9.16.0
@@ -20,7 +21,6 @@ require (
 	github.com/eapache/go-xerial-snappy v0.0.0-20230731223053-c322873962e3 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/go-test/deep v1.1.1 // indirect
-	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/snappy v1.0.0 // indirect
 	github.com/hashicorp/go-uuid v1.0.3 // indirect
 	github.com/jcmturner/aescts/v2 v2.0.0 // indirect

@@ -37,7 +37,7 @@ func TestNewNotificationChannel(t *testing.T) {
 }
 
 func TestNotificationsChannel_Run(t *testing.T) {
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -82,7 +82,7 @@ func TestNotificationsChannel_Run(t *testing.T) {
 }
 
 func TestNotificationsChannel_process_Success(t *testing.T) {
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -114,7 +114,7 @@ func TestNotificationsChannel_process_Success(t *testing.T) {
 }
 
 func TestNotificationsChannel_process_Retry(t *testing.T) {
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -155,7 +155,7 @@ func TestNotificationsChannel_process_Retry(t *testing.T) {
 }
 
 func TestNotificationsChannel_process_MaxRetriesReached(t *testing.T) {
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -199,7 +199,7 @@ func TestNotificationsChannel_process_MaxRetriesReached(t *testing.T) {
 }
 
 func TestNotificationsChannel_process_ContextCancelledDuringRetry(t *testing.T) {
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -237,7 +237,7 @@ func TestNotificationsChannel_process_ContextCancelledDuringRetry(t *testing.T) 
 }
 
 func TestNotificationsChannel_terminator(t *testing.T) {
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
@@ -275,7 +275,7 @@ func TestNotificationsChannel_terminator(t *testing.T) {
 }
 
 func TestNotificationsChannel_getSubscriber(t *testing.T) {
-	synctest.Run(func() {
+	synctest.Test(t, func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
 
