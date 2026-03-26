@@ -8,10 +8,11 @@ import (
 )
 
 type WsNotificationsClient struct {
-	conn  *websocket.Conn
-	email string
-	send  chan []byte
-	close chan struct{}
+	conn     *websocket.Conn
+	email    string
+	send     chan []byte
+	close    chan struct{}
+	isClosed bool
 }
 
 func NewWsNotificationsClient(conn *websocket.Conn, email string) *WsNotificationsClient {
@@ -27,44 +28,38 @@ func NewWsNotificationsClient(conn *websocket.Conn, email string) *WsNotificatio
 }
 
 func (c *WsNotificationsClient) SendNotification(notificationBody []byte) error {
+	if c.isClosed {
+		return fmt.Errorf("client closed")
+	}
+
 	select {
 	case c.send <- notificationBody:
 		return nil
-	case <-c.close:
-		close(c.send)
-		return fmt.Errorf("client closed")
 	default:
-		close(c.send)
+		c.Close()
 		return fmt.Errorf("connection too slow")
 	}
 }
 
 func (c *WsNotificationsClient) Close() {
-	if c.close == nil {
+	if c.isClosed {
 		return
 	}
 
 	close(c.close)
-	c.close = nil
-	c.conn.Close()
+	close(c.send)
+	c.isClosed = true
 }
 
-func (c *WsNotificationsClient) Closed() struct{} {
-	return <-c.close
+func (c *WsNotificationsClient) Closed() chan struct{} {
+	return c.close
 }
 
 func (c *WsNotificationsClient) writePump() {
-	for {
-		select {
-		case message, ok := <-c.send:
-			if !ok {
-				c.Close()
-				return
-			}
-			c.conn.WriteMessage(websocket.TextMessage, message) //nolint:errcheck
-		case <-c.close:
-			return
-		}
+	defer c.conn.Close() //nolint:errcheck
+
+	for message := range c.send {
+		c.conn.WriteMessage(websocket.TextMessage, message) //nolint:errcheck
 	}
 }
 

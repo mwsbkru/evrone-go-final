@@ -37,15 +37,17 @@ func (u *WsNotificationsService) HandleConnection(ctx context.Context, userEmail
 	if ok {
 		slog.Info("New attempt to connect to WS, terminating current connection", slog.String("user_email", userEmail))
 		currentClient.SendNotification(prepareMessageForSending("new attempt to connect to WS, terminating current connection"))
-		u.handleConnectionTermination(userEmail) //nolint:errcheck
+		currentClient.Close()
+		delete(u.clients, userEmail)
 	}
+
 	slog.Info("Preparing new WS connection", slog.String("user_email", userEmail))
-	u.clients[userEmail] = NewWsNotificationsClient(connection, userEmail)
-	go u.handleConnection(ctx, userEmail, currentClient)
+	newClient := NewWsNotificationsClient(connection, userEmail)
+	u.clients[userEmail] = newClient
+	go u.processConnection(ctx, userEmail)
 }
 
-// TODO remove WsNotificationsClient
-func (u *WsNotificationsService) handleConnection(ctx context.Context, userEmail string, wsClient *WsNotificationsClient) {
+func (u *WsNotificationsService) processConnection(ctx context.Context, userEmail string) {
 	slog.Info("New WS connection", slog.String("user_email", userEmail))
 	defer slog.Info("WS connection closed", slog.String("user_email", userEmail))
 	ctx, cancel := context.WithCancel(ctx)
@@ -53,35 +55,30 @@ func (u *WsNotificationsService) handleConnection(ctx context.Context, userEmail
 	u.handleConnectionClosedByUser(userEmail, cancel)
 }
 
-func (u *WsNotificationsService) handleConnectionClosedByUser(userEmail string, cancel context.CancelFunc) {
-	for {
-		slog.Info("Waiting for reading message from WS connection", slog.String("user_email", userEmail))
-
-		if client, ok := u.clients[userEmail]; ok {
-			client.Closed()
-		} else {
-			return
-		}
+func (u *WsNotificationsService) handleNotification(notification entity.Notification) {
+	if client, ok := u.clients[notification.UserEmail]; ok {
+		defer slog.Info("WS Send notification", slog.String("user_email", notification.UserEmail), slog.String("message", notification.Body))
+		client.SendNotification(prepareMessageForSending(notification.Body)) //nolint:errcheck
+	} else {
+		slog.Info("WS  notification not delivered, user connection not found", slog.String("user_email", notification.UserEmail), slog.String("message", notification.Body))
 	}
 }
 
-func (u *WsNotificationsService) handleNotification(notification entity.Notification) {
-	if client, ok := u.clients[notification.UserEmail]; ok {
-		client.SendNotification(prepareMessageForSending(notification.Body)) //nolint:errcheck
+func (u *WsNotificationsService) handleConnectionClosedByUser(userEmail string, cancel context.CancelFunc) {
+	if client, ok := u.clients[userEmail]; ok {
+		slog.Info("Waiting for closing WS connection by user", slog.String("user_email", userEmail))
+		<-client.Closed()
+		cancel()
+		delete(u.clients, userEmail)
 	}
 }
 
 func (u *WsNotificationsService) handleConnectionTermination(userEmail string) {
 	slog.Info("handleConnectionTermination run", slog.String("user_email", userEmail))
-	u.terminateConnection(userEmail)
-}
-
-func (u *WsNotificationsService) terminateConnection(userEmail string) {
-	slog.Info("Termination connection", slog.String("user_email", userEmail))
 	if client, ok := u.clients[userEmail]; ok {
+		slog.Info("Delete client", slog.String("user_email", userEmail))
 		delete(u.clients, userEmail)
-		client.SendNotification(prepareMessageForSending("connection closed by server")) //nolint:errcheck
-		client.Close()                                                                   //nolint:errcheck
+		client.Close()
 	}
 }
 
