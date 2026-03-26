@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 
@@ -8,19 +9,21 @@ import (
 )
 
 type WsNotificationsClient struct {
-	conn     *websocket.Conn
-	email    string
-	send     chan []byte
-	close    chan struct{}
-	isClosed bool
+	conn       *websocket.Conn
+	email      string
+	send       chan []byte
+	close      chan struct{}
+	isClosed   bool
+	cancelFunc context.CancelFunc
 }
 
-func NewWsNotificationsClient(conn *websocket.Conn, email string) *WsNotificationsClient {
+func NewWsNotificationsClient(conn *websocket.Conn, email string, cancelFunc context.CancelFunc) *WsNotificationsClient {
 	c := &WsNotificationsClient{
-		conn:  conn,
-		email: email,
-		send:  make(chan []byte, 256),
-		close: make(chan struct{}),
+		conn:       conn,
+		email:      email,
+		send:       make(chan []byte, 256),
+		close:      make(chan struct{}),
+		cancelFunc: cancelFunc,
 	}
 	go c.writePump()
 	go c.readPump()
@@ -46,6 +49,7 @@ func (c *WsNotificationsClient) Close() {
 		return
 	}
 
+	c.cancelFunc()
 	close(c.close)
 	close(c.send)
 	c.isClosed = true

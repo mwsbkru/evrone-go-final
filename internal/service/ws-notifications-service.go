@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"github.com/mwsbkru/evrone-go-final/internal/entity"
@@ -22,6 +23,7 @@ type WsNotificationsReceiver interface {
 type WsNotificationsService struct {
 	clients                 map[string]*WsNotificationsClient
 	wsNotificationsReceiver WsNotificationsReceiver
+	mu                      sync.RWMutex
 }
 
 func NewWsNotificationsService(wsNotificationsReceiver WsNotificationsReceiver) *WsNotificationsService {
@@ -33,6 +35,9 @@ func (u *WsNotificationsService) Run(ctx context.Context) {
 }
 
 func (u *WsNotificationsService) HandleConnection(ctx context.Context, userEmail string, connection *websocket.Conn) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
 	currentClient, ok := u.clients[userEmail]
 	if ok {
 		slog.Info("New attempt to connect to WS, terminating current connection", slog.String("user_email", userEmail))
@@ -40,23 +45,24 @@ func (u *WsNotificationsService) HandleConnection(ctx context.Context, userEmail
 		currentClient.Close()
 		delete(u.clients, userEmail)
 	}
-
-	slog.Info("Preparing new WS connection", slog.String("user_email", userEmail))
-	newClient := NewWsNotificationsClient(connection, userEmail)
-	u.clients[userEmail] = newClient
-	go u.processConnection(ctx, userEmail)
-}
-
-func (u *WsNotificationsService) processConnection(ctx context.Context, userEmail string) {
-	slog.Info("New WS connection", slog.String("user_email", userEmail))
-	defer slog.Info("WS connection closed", slog.String("user_email", userEmail))
+	fmt.Println(u.clients)
 	ctx, cancel := context.WithCancel(ctx)
+	slog.Info("Preparing new WS connection", slog.String("user_email", userEmail))
+	newClient := NewWsNotificationsClient(connection, userEmail, cancel)
+	u.clients[userEmail] = newClient
+
+	slog.Info("New WS connection", slog.String("user_email", userEmail))
+	fmt.Println(u.clients)
 	go u.wsNotificationsReceiver.ReceiveNotifications(ctx, userEmail)
-	u.handleConnectionClosedByUser(userEmail, cancel)
+	go u.handleConnectionClosedByUser(userEmail, cancel)
 }
 
 func (u *WsNotificationsService) handleNotification(notification entity.Notification) {
-	if client, ok := u.clients[notification.UserEmail]; ok {
+	u.mu.RLock()
+	client, ok := u.clients[notification.UserEmail]
+	u.mu.RUnlock()
+
+	if ok {
 		defer slog.Info("WS Send notification", slog.String("user_email", notification.UserEmail), slog.String("message", notification.Body))
 		client.SendNotification(prepareMessageForSending(notification.Body)) //nolint:errcheck
 	} else {
@@ -65,19 +71,34 @@ func (u *WsNotificationsService) handleNotification(notification entity.Notifica
 }
 
 func (u *WsNotificationsService) handleConnectionClosedByUser(userEmail string, cancel context.CancelFunc) {
-	if client, ok := u.clients[userEmail]; ok {
+	u.mu.RLock()
+	client, ok := u.clients[userEmail]
+	u.mu.RUnlock()
+
+	if ok {
 		slog.Info("Waiting for closing WS connection by user", slog.String("user_email", userEmail))
 		<-client.Closed()
 		cancel()
-		delete(u.clients, userEmail)
+		u.mu.Lock()
+		if _, ok := u.clients[userEmail]; ok {
+			delete(u.clients, userEmail)
+		}
+		u.mu.Unlock()
 	}
 }
 
 func (u *WsNotificationsService) handleConnectionTermination(userEmail string) {
 	slog.Info("handleConnectionTermination run", slog.String("user_email", userEmail))
-	if client, ok := u.clients[userEmail]; ok {
+	u.mu.RLock()
+	client, ok := u.clients[userEmail]
+	u.mu.RUnlock()
+	if ok {
 		slog.Info("Delete client", slog.String("user_email", userEmail))
-		delete(u.clients, userEmail)
+		u.mu.Lock()
+		if _, ok := u.clients[userEmail]; ok {
+			delete(u.clients, userEmail)
+		}
+		u.mu.Unlock()
 		client.Close()
 	}
 }
